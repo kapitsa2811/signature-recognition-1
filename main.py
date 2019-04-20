@@ -39,6 +39,8 @@ Flags.DEFINE_integer('batch_labels_size', 3, 'Number of labels in each batch. mi
 Flags.DEFINE_integer('batch_image_per_label', 2, 'Number of images per label. min 2, K, batch size = P*K')
 Flags.DEFINE_integer('batch_thread', 4, 'The number of threads to process image queue for generating batches')
 Flags.DEFINE_integer('image_size', 224, 'Image crop size (image_size x image_size)')
+Flags.DEFINE_float('max_delta', 0.4, 'max delta for brightness, contrast and hue [0,0.5]')
+Flags.DEFINE_float('max_saturation_delta', 2, 'max delta for saturation [0,3]')
 
 # model configurations
 Flags.DEFINE_integer('first_kernel', 7, 'First conv kernel size in flow computation network')

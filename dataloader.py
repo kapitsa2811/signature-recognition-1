@@ -22,7 +22,7 @@ def prepare_image_paths(image_dir):
 
     labels = list(set(labels))
     for label in labels:
-        assert re.match("^[a-z]0[0-9]$", label)
+        assert re.match('^[a-z]0[0-9]$', label)
 
     return images_dict, len(images_list), labels
 
@@ -74,11 +74,45 @@ class Dataloader:
         )
 
 
-def duplicate(image, times, mode="height"):
-    return image
+def update(it, image, image_d, image_white, axis):
+    image_d = tf.cond(tf.less(tf.random.uniform([], minval=0, maxval=1), 0.5),
+                      lambda: tf.concat([image_d, image_white], axis=axis),
+                      lambda: tf.concat([image_d, image], axis=axis))
+    it = it + 1
+
+    return it, image, image_d, image_white, axis
 
 
-def process_singe_image(image_path, FLAGS):
+def duplicate(image, times, axis_mode="height", mode="train"):
+    times = tf.cast(times, dtype=tf.int32)
+    if axis_mode == "height":
+        axis = tf.constant(0)
+        tile_shape = (times, 1, 1)
+    elif axis_mode == "width":
+        axis = tf.constant(1)
+        tile_shape = (1, times, 1)
+    else:
+        raise ValueError("[ERROR]: Unknown mode for duplicate: " + axis_mode)
+
+    if mode == "train":
+        image_d = tf.identity(image)
+        # image_white = tf.ones_like(image, dtype=tf.float32) * 0.999
+        image_white = tf.random_uniform(tf.shape(image), minval=0.94, maxval=0.999, dtype=tf.float32)
+        it = tf.constant(0)
+        condition = lambda it, image, image_d, image_white, axis: tf.less(it, times - 1)
+        _, _, image_d, _, _ = tf.while_loop(condition, update, (it, image, image_d, image_white, axis),
+                                            shape_invariants=(it.get_shape(), tf.TensorShape([None, None, 3]),
+                                                              tf.TensorShape([None, None, None]),
+                                                              tf.TensorShape([None, None, 3]), axis.get_shape()))
+    elif mode == "val":
+        image_d = tf.tile(image, tile_shape)
+    else:
+        raise ValueError("[ERROR]: Unknown mode for duplicate: " + mode)
+
+    return image_d
+
+
+def process_singe_image(image_path, FLAGS, mode):
     image = tf.read_file(image_path)
     image = tf.image.decode_png(image, channels=3)
     image = tf.image.convert_image_dtype(image, dtype=tf.float32)
@@ -90,33 +124,50 @@ def process_singe_image(image_path, FLAGS):
     # scale image, new min(height,  width) = FLAGS.image_size
     with tf.name_scope("scaling"):
         h, w, _ = tf.shape(image)
-        scale = tf.cond(tf.less(h, w), lambda: w, lambda: h) / tf.cast(FLAGS.image_size, dtype=tf.float32)
+        scale = tf.cast(FLAGS.image_size, dtype=tf.float32) / tf.cond(tf.less(h, w), lambda: w, lambda: h)
         image = tf.cond(tf.less_equal(scale, 1.0), lambda: tf.identity(image),
-                        lambda: tf.image.resize_bilinear(image, [tf.cast(tf.ceil(scale * h), dtype=tf.int32),
-                                                                 tf.cast(tf.ceil(scale * w), dtype=tf.int32)]))
+                        lambda: tf.image.resize_bilinear(image, [tf.cast(tf.floor(scale * h), dtype=tf.int32),
+                                                                 tf.cast(tf.floor(scale * w), dtype=tf.int32)]))
 
     with tf.name_scope("extrapolate"):
         with tf.name_scope("height"):
             h, _, _ = tf.shape(image)
             scale_h = tf.cast(FLAGS.image_size, dtype=tf.float32) / h
             image = tf.cond(tf.less(scale_h, 2.0), lambda: tf.identity(image),
-                            duplicate(image, tf.floor(scale_h), "height"))
+                            duplicate(image, tf.floor(scale_h), "height", mode))
 
         with tf.name_scope("width"):
             _, w, _ = tf.shape(image)
             scale_w = tf.cast(FLAGS.image_size, dtype=tf.float32) / w
             image = tf.cond(tf.less(scale_w, 2.0), lambda: tf.identity(image),
-                            duplicate(image, tf.floor(scale_w), "height"))
+                            duplicate(image, tf.floor(scale_w), "height", mode))
 
     with tf.name_scope("pad"):
-        image = tf.identity(image)
-    # with tf.name_scope("random_crop") TODO: check whether required
+        h, w, _ = tf.shape(image)
+        h_diff, w_diff = FLAGS.image_size - h, FLAGS.image_size - w
+        assert_positive_hdiff = tf.assert_greater_equal(h_diff, 0)
+        assert_positive_wdiff = tf.assert_greater_equal(w_diff, 0)
+        with tf.control_dependencies([assert_positive_hdiff, assert_positive_wdiff]):
+            image = tf.pad(image, ([0, h_diff], [0, w_diff], [0, 0]), constant_values=0.999)
+
+    image = tf.expand_dims(image, 0)
+    with tf.name_scope("brightness_contrast_hue_saturation"):
+        image = tf.image.random_brightness(image, FLAGS.max_delta)
+        image = tf.image.random_contrast(image, 0, FLAGS.max_delta)
+        image = tf.image.random_hue(image, FLAGS.max_delta)
+        image = tf.image.random_saturation(image, 0, FLAGS.max_saturation_delta)
+
+    with tf.name_scope("random_crop"):
+        random_size = tf.random_uniform([], minval=0.6, maxval=1.0, dtype=tf.float32)
+        image = tf.image.crop_and_resize(image, boxes=[[0, 0, random_size, random_size]], box_ind=[0],
+                                         crop_size=[FLAGS.image_size, FLAGS.image_size])
 
     return image
 
 
-def pre_process(data, FLAGS):
+def pre_process(data, FLAGS, mode="train"):
     image_paths_list = data.images_path
     image_paths_tensor = tf.convert_to_tensor(image_paths_list, dtype=tf.string)
-    image_batch = tf.map_fn(lambda image_path: process_singe_image(image_path, FLAGS), image_paths_tensor)
+    image_batch = tf.map_fn(lambda image_path: process_singe_image(image_path, FLAGS, mode), image_paths_tensor)
+    image_batch = tf.stack(image_batch, axis=0)
     return image_batch, tf.convert_to_tensor(data.labels, dtype=tf.int32)
