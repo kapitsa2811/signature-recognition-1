@@ -27,7 +27,7 @@ def prepare_image_paths(image_dir):
     return images_dict, len(images_list), labels
 
 
-class Dataloader:
+class DataLoader:
 
     def __init__(self, FLAGS):
         self.FLAGS = FLAGS

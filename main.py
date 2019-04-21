@@ -7,7 +7,7 @@ import time
 import math
 import tensorflow as tf
 from utils import print_configuration_op
-from dataloader import Dataloader
+from dataloader import DataLoader
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
