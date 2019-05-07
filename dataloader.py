@@ -1,10 +1,11 @@
 from __future__ import division, absolute_import, print_function
 
-import numpy as np
-import tensorflow as tf
+import collections
 import os
 import re
-import collections
+
+import numpy as np
+import tensorflow as tf
 
 
 def prepare_image_paths(image_dir):
@@ -72,6 +73,18 @@ class DataLoader:
             train=self.train_len,
             val=self.val_len
         )
+
+    def get_val_enrollment_batch(self, enrollment_size = 2):
+        labels = []
+        image_path = []
+
+        all_labels = self.val_labels
+        data_dict = self.val_dict
+
+        for l in all_labels:
+            labels.append(l)
+
+
 
 
 def update(it, image, image_d, image_white, axis):

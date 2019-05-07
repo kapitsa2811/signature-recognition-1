@@ -1,8 +1,9 @@
 from __future__ import division, absolute_import, print_function
 
-import tensorflow as tf
-import functools
 import collections
+import functools
+
+import tensorflow as tf
 
 layers = tf.layers
 
@@ -96,7 +97,7 @@ class IdentityBlock(tf.keras.Model):
 
 class Resnet50(tf.keras.Model):
 
-    def __init__(self, labels_count):
+    def __init__(self, emb_size):
         super(Resnet50, self).__init__(name='')
 
         self.conv1 = layers.Conv2D(64, (7, 7), strides=(2, 2), padding='same', name='conv1')
@@ -126,7 +127,7 @@ class Resnet50(tf.keras.Model):
         self.avg_pool = layers.AveragePooling2D((7, 7), strides=(7, 7), name='avg_pool1')
 
         self.flatten = layers.Flatten()
-        self.fc = layers.Dense(labels_count, name='fc1')
+        self.fc = layers.Dense(emb_size, name='fc1')
 
     def call(self, input_tensor, training=True, mask=None):
         x = self.conv1(input_tensor)
@@ -165,24 +166,44 @@ class Network:
 
     def __init__(self, FLAGS, reuse=False, var_scope='network'):
         self.FLAGS = FLAGS
-        self.labels_count = FLAGS.labels_count
+        self.embedding_size = FLAGS.embedding_size
+        self.var_scope = var_scope
+        self.global_step = tf.contrib.framework.get_or_create_global_step()
+        self.learning_rate = FLAGS.learning_rate
         self.var_scope = var_scope
 
         with tf.variable_scope(var_scope, reuse=reuse):
-            self.net = Resnet50(self.labels_count)
+            self.net = Resnet50(self.embedding_size)
 
         if FLAGS.loss == 'semi-hard':
             self.loss_fn = functools.partial(semihard_mining_triplet_loss, margin=FLAGS.loss_margin)
         elif FLAGS.loss == 'hard':
             self.loss_fn = functools.partial(hard_mining_triplet_loss, margin=FLAGS.loss_margin)
+            raise ValueError("loss fn not implemented: " + FLAGS.loss)
         else:
-            raise ValueError("unkown loss fn: " + FLAGS.loss)
+            raise ValueError("unknown loss fn: " + FLAGS.loss)
 
     def __call__(self, inputs, labels, training=True):
-        net_output = collections.namedtuple('net_output', 'embeddings, loss')
+        net_output = collections.namedtuple('net_output', 'embeddings, loss, train')
         embeddings = self.net(inputs, training=training)
         loss = self.loss_fn(labels=labels, embeddings=embeddings)
+
+        with tf.variable_scope("optimizer"):
+            self.learning_rate = tf.train.exponential_decay(self.FLAGS.learning_rate, self.global_step,
+                                                            self.FLAGS.decay_step,
+                                                            self.FLAGS.decay_rate,
+                                                            staircase=self.FLAGS.stair)
+            incr_global_step = tf.assign(self.global_step, self.global_step + 1)
+
+            with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
+                tvars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.var_scope)
+                optimizer = tf.train.AdamOptimizer(self.learning_rate, beta1=self.FLAGS.beta)
+                grads_and_vars = optimizer.compute_gradients(loss, tvars)
+                train_op = optimizer.apply_gradients(grads_and_vars)
+
+        # TODO: Add regularization loss
         return net_output(
             embeddings=embeddings,
-            loss=loss
+            loss=loss,
+            train=tf.group(loss, incr_global_step, train_op)
         )

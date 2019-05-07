@@ -43,15 +43,12 @@ Flags.DEFINE_float('max_delta', 0.4, 'max delta for brightness, contrast and hue
 Flags.DEFINE_float('max_saturation_delta', 2, 'max delta for saturation [0,3]')
 
 # model configurations
-Flags.DEFINE_integer('first_kernel', 7, 'First conv kernel size in flow computation network')
-Flags.DEFINE_integer('second_kernel', 5, 'First conv kernel size in flow computation network')
-Flags.DEFINE_float('epsilon', 1e-12, 'The eps added to prevent nan')
-Flags.DEFINE_string('perceptual_mode', 'VGG54', 'The type of feature used in perceptual loss')
-Flags.DEFINE_float('reconstruction_scaling', 0.1, 'The scaling factor for the reconstruction loss')
-Flags.DEFINE_float('perceptual_scaling', 1.0, 'The scaling factor for the perceptual loss')
+Flags.DEFINE_integer('embedding_size', 128, 'output embedding size')
+Flags.DEFINE_string('loss', 'semi-hard', 'primary loss function. (semi-hard: triplet loss with semi-hard negative '
+                                         'mining | hard: triplet loss with hard negative mining)')
 
 # Trainer Parameters
-Flags.DEFINE_float('learning_rate', 0.0001, 'The learning rate for the network')
+Flags.DEFINE_float('learning_rate', 0.001, 'The learning rate for the network')
 Flags.DEFINE_integer('decay_step', 500000, 'The steps needed to decay the learning rate')
 Flags.DEFINE_float('decay_rate', 0.1, 'The decay rate of each decay step')
 Flags.DEFINE_boolean('stair', False, 'Whether perform staircase decay. True => decay in discrete interval.')
@@ -66,3 +63,18 @@ FLAGS = Flags.FLAGS
 
 # Print the configuration of the model
 print_configuration_op(FLAGS)
+
+# Check Directories
+if FLAGS.output_dir is None or FLAGS.summary_dir is None:
+    raise ValueError('The output directory and summary directory are needed')
+
+# Check the output directory to save the checkpoint
+if not os.path.exists(FLAGS.output_dir):
+    os.mkdir(FLAGS.output_dir)
+
+# Check the summary directory to save the event
+if not os.path.exists(FLAGS.summary_dir):
+    os.mkdir(FLAGS.summary_dir)
+
+# Initialize DataLoader
+data_loader = DataLoader(FLAGS)
