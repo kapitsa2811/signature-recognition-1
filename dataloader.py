@@ -32,9 +32,9 @@ class DataLoader:
 
     def __init__(self, FLAGS):
         self.FLAGS = FLAGS
-        self.train_dict = {}
 
-        self.val_dict = {}
+        self.val_enroll_images_path, self.val_enroll_labels = [], []
+        self.enrollment_size = 0
         self.train_dict, self.train_len, self.labels = prepare_image_paths(self.FLAGS.train_dir)
         self.val_dict, self.val_len, self.val_labels = prepare_image_paths(self.FLAGS.val_dir)
 
@@ -60,7 +60,16 @@ class DataLoader:
         labels = []
         for l in labels_list:
             labels.extend([self.labels.index(l)] * self.FLAGS.batch_image_per_label)
-            images_path.extend(np.random.choice(data_dict[l], size=self.FLAGS.batch_image_per_label, replace=False))
+            if name == 'train':
+                images_path.extend(np.random.choice(data_dict[l], size=self.FLAGS.batch_image_per_label, replace=False))
+            else:
+                assert len(data_dict[l]) > self.enrollment_size + self.FLAGS.batch_image_per_label
+                inserted = 0
+                while inserted < self.FLAGS.batch_image_per_label:
+                    ran_image_path = np.random.choice(data_dict[l])
+                    if ran_image_path not in self.val_enroll_images_path:
+                        images_path.append(ran_image_path)
+                        inserted += 1
 
         return data(
             images_path=images_path,
@@ -74,17 +83,22 @@ class DataLoader:
             val=self.val_len
         )
 
-    def get_val_enrollment_batch(self, enrollment_size = 2):
-        labels = []
-        image_path = []
-
+    def get_val_enrollment_batch(self, enrollment_size=2):
+        self.enrollment_size = enrollment_size
+        self.val_enroll_images_path, self.val_enroll_labels = [], []
+        data = collections.namedtuple('data', 'images_path, labels')
         all_labels = self.val_labels
         data_dict = self.val_dict
 
         for l in all_labels:
-            labels.append(l)
+            assert len(data_dict[l]) > enrollment_size
+            self.val_enroll_labels.extend([self.labels.index(l)] * enrollment_size)
+            self.val_enroll_images_path.extend(np.random.choice(data_dict[l], size=enrollment_size, replace=False))
 
-
+        return data(
+            images_path=self.val_enroll_images_path,
+            labels=self.val_enroll_labels
+        )
 
 
 def update(it, image, image_d, image_white, axis):

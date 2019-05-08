@@ -78,3 +78,4 @@ if not os.path.exists(FLAGS.summary_dir):
 
 # Initialize DataLoader
 data_loader = DataLoader(FLAGS)
+
