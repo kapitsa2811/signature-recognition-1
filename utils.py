@@ -23,3 +23,7 @@ def print_configuration_op(FLAGS):
             print('\t%s: %s' % (name, value))
 
     print('End of configuration')
+
+
+
+

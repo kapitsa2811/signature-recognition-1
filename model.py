@@ -4,6 +4,7 @@ import collections
 import functools
 
 import tensorflow as tf
+from dataloader import pre_process_enroll
 
 layers = tf.layers
 
@@ -162,6 +163,8 @@ class Resnet50(tf.keras.Model):
         return x
 
 
+# Network and Training op
+
 class Network:
 
     def __init__(self, FLAGS, reuse=False, var_scope='network'):
@@ -207,3 +210,17 @@ class Network:
             loss=loss,
             train=tf.group(loss, incr_global_step, train_op)
         )
+
+    def forward_pass(self, inputs):
+        return self.net(inputs, training=False)
+
+
+# Validation Function
+
+def enroll_and_validate(net, enrollment_batch, validate_batch, FLAGS):
+    enrollment_dict = pre_process_enroll(enrollment_batch.label_dict, FLAGS)
+    enrolled_emb_dict = {}
+    for label, image_batch in enrollment_dict.items():
+        embeddings = net.enrollment_dict(image_batch)
+        embeddings_avg =
+

@@ -33,7 +33,7 @@ class DataLoader:
     def __init__(self, FLAGS):
         self.FLAGS = FLAGS
 
-        self.val_enroll_images_path, self.val_enroll_labels = [], []
+        self.val_enroll_images_path, self.val_enroll_dict = [], {}
         self.enrollment_size = 0
         self.train_dict, self.train_len, self.labels = prepare_image_paths(self.FLAGS.train_dir)
         self.val_dict, self.val_len, self.val_labels = prepare_image_paths(self.FLAGS.val_dir)
@@ -85,19 +85,20 @@ class DataLoader:
 
     def get_val_enrollment_batch(self, enrollment_size=2):
         self.enrollment_size = enrollment_size
-        self.val_enroll_images_path, self.val_enroll_labels = [], []
-        data = collections.namedtuple('data', 'images_path, labels')
+        self.val_enroll_images_path, self.val_enroll_dict = [], {}
+        data = collections.namedtuple('data', 'images_path, label_dict')
         all_labels = self.val_labels
         data_dict = self.val_dict
 
         for l in all_labels:
             assert len(data_dict[l]) > enrollment_size
-            self.val_enroll_labels.extend([self.labels.index(l)] * enrollment_size)
-            self.val_enroll_images_path.extend(np.random.choice(data_dict[l], size=enrollment_size, replace=False))
+            _batch = np.random.choice(data_dict[l], size=enrollment_size, replace=False)
+            self.val_enroll_dict[l] = _batch
+            self.val_enroll_images_path.extend(_batch)
 
         return data(
             images_path=self.val_enroll_images_path,
-            labels=self.val_enroll_labels
+            label_dict=self.val_enroll_dict
         )
 
 
@@ -198,3 +199,12 @@ def pre_process(data, FLAGS, mode="train"):
     image_batch = tf.map_fn(lambda image_path: process_singe_image(image_path, FLAGS, mode), image_paths_tensor)
     image_batch = tf.stack(image_batch, axis=0)
     return image_batch, tf.convert_to_tensor(data.labels, dtype=tf.int32)
+
+
+def pre_process_enroll(data_dict: dict, FLAGS):
+    data = collections.namedtuple('data', 'images_path, labels')
+    enrollement_dict = {}
+    for label, images_path in data_dict.items():
+        dummy_data = data(images_path=images_path, labels=[0])
+        enrollement_dict[label], _ = pre_process(dummy_data, FLAGS, mode='val')
+    return enrollement_dict
