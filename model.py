@@ -4,7 +4,8 @@ import collections
 import functools
 
 import tensorflow as tf
-from dataloader import pre_process_enroll
+
+from dataloader import pre_process
 
 layers = tf.layers
 
@@ -95,7 +96,7 @@ class IdentityBlock(tf.keras.Model):
 
 
 # Model
-
+# TODO: Add variable scope if it doesnt work
 class Resnet50(tf.keras.Model):
 
     def __init__(self, emb_size):
@@ -164,7 +165,7 @@ class Resnet50(tf.keras.Model):
 
 
 # Network and Training op
-
+# TODO: Check wether placeholder needed, Take care of private structure, make properties
 class Network:
 
     def __init__(self, FLAGS, reuse=False, var_scope='network'):
@@ -215,12 +216,5 @@ class Network:
         return self.net(inputs, training=False)
 
 
-# Validation Function
 
-def enroll_and_validate(net, enrollment_batch, validate_batch, FLAGS):
-    enrollment_dict = pre_process_enroll(enrollment_batch.label_dict, FLAGS)
-    enrolled_emb_dict = {}
-    for label, image_batch in enrollment_dict.items():
-        embeddings = net.enrollment_dict(image_batch)
-        embeddings_avg =
 

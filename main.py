@@ -37,6 +37,7 @@ Flags.DEFINE_string('train_dir',
 Flags.DEFINE_string('val_dir', None, 'The directory to extract videos temporarily')
 Flags.DEFINE_integer('batch_labels_size', 3, 'Number of labels in each batch. min 2, P')
 Flags.DEFINE_integer('batch_image_per_label', 2, 'Number of images per label. min 2, K, batch size = P*K')
+Flags.DEFINE_integer('val_batch_image_per_label', 5, 'Number of images per label for validation.')
 Flags.DEFINE_integer('batch_thread', 4, 'The number of threads to process image queue for generating batches')
 Flags.DEFINE_integer('image_size', 224, 'Image crop size (image_size x image_size)')
 Flags.DEFINE_float('max_delta', 0.4, 'max delta for brightness, contrast and hue [0,0.5]')
