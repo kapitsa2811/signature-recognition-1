@@ -137,12 +137,11 @@ def pre_process(image_paths_tensor, FLAGS, mode='train'):
 #     return enrollment_dict
 
 
-def enroll_emb(net, image_path_tensor, FLAGS):
+def enroll(net, image_path_tensor, FLAGS):
     with tf.variable_scope('enroll'):
         images = pre_process(image_path_tensor, FLAGS, mode='val')
         embeddings = net.forward_pass(images)
         return tf.reduce_mean(embeddings, axis=0)
-
 
 def infer(net, image_path_tensor, FLAGS):
     with tf.variable_scope('infer'):
@@ -166,8 +165,8 @@ def get_closest_emb_label(enrolled_emb_dic: dict, embedding_list, np_ord=2):
 
 def validate(sess: tf.Session, net, val_enroll_dict: dict, val_batch_dict: dict, FLAGS):
     enrolled_emb_dict = {}
-    images_path_tensor = tf.placeholder(tf.string, shape=[None], name='images_path_tensor')
-    _enroll_embeddings = enroll_emb(net, images_path_tensor, FLAGS)
+    images_path_tensor = tf.placeholder(tf.string, shape=[None, ], name='images_path_tensor')
+    _enroll_embeddings = enroll(net, images_path_tensor, FLAGS)
     _embedding_list = infer(net, images_path_tensor, FLAGS)
     for l, images_paths in val_enroll_dict.items():
         enrolled_emb_dict[l] = sess.run(_enroll_embeddings, feed_dict={images_path_tensor: images_paths})

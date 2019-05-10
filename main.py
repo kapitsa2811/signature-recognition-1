@@ -4,10 +4,13 @@ from __future__ import print_function
 
 import os
 import time
-import math
+
 import tensorflow as tf
-from utils import print_configuration_op
+
 from dataloader import DataLoader
+from model import Network
+from utils import print_configuration_op
+from utils import validate, pre_process
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
@@ -54,7 +57,6 @@ Flags.DEFINE_integer('decay_step', 500000, 'The steps needed to decay the learni
 Flags.DEFINE_float('decay_rate', 0.1, 'The decay rate of each decay step')
 Flags.DEFINE_boolean('stair', False, 'Whether perform staircase decay. True => decay in discrete interval.')
 Flags.DEFINE_float('beta', 0.9, 'The beta1 parameter for the Adam optimizer')
-Flags.DEFINE_integer('max_epoch', None, 'The max epoch for the training')
 Flags.DEFINE_integer('max_iter', 1000000, 'The max iteration of the training')
 Flags.DEFINE_integer('display_freq', 20, 'The diplay frequency of the training process')
 Flags.DEFINE_integer('summary_freq', 100, 'The frequency of writing summary')
@@ -80,3 +82,89 @@ if not os.path.exists(FLAGS.summary_dir):
 # Initialize DataLoader
 data_loader = DataLoader(FLAGS)
 
+# Defining Placeholder
+images_path_tensor = tf.placeholder(tf.string, shape=[None, ], name='image_path_tensors')
+images_label_tensor = tf.placeholder(tf.int32, shape=[None, ], name='image_lables_tensor')
+# # A hock to add validation accuracy in tensorboard
+val_accuracy = tf.placeholder(tf.double, shape=[], name='val_accuracy')
+
+# Training
+net = Network(FLAGS)
+train = net(pre_process(images_path_tensor, FLAGS), images_label_tensor)
+
+# Add summaries
+tf.summary.histogram("embeddings_histogram", train.embeddings)
+tf.summary.scalar("train_loss", train.loss)
+tf.summary.scalar("learning_rate", net.learning_rate)
+tf.summary.scalar("val_accuracy", val_accuracy)
+
+# Define the saver and weight initiallizer
+saver = tf.train.Saver(max_to_keep=10)
+
+# Get trainable variable
+train_var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="network")
+weight_initializer = tf.train.Saver(train_var_list)
+
+# Start the session
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+
+# Use supervisor to coordinate all queue and summary writer
+# TODO: Deprecated, Update with tf.train.MonitoredTrainingSession
+sv = tf.train.Supervisor(logdir=FLAGS.summary_dir, save_summaries_secs=0, saver=None)
+
+with sv.managed_session(config=config) as sess:
+    # TODO: check the saving checkpoint part for below both
+    if (FLAGS.checkpoint is not None) and (FLAGS.pre_trained_model is False):
+        print('Loading model from the checkpoint...')
+        checkpoint = tf.train.latest_checkpoint(FLAGS.checkpoint)
+        saver.restore(sess, checkpoint)
+
+    elif (FLAGS.checkpoint is not None) and (FLAGS.pre_trained_model is True):
+        print('Loading weights from the pre-trained model')
+        weight_initializer.restore(sess, FLAGS.checkpoint)
+
+    print('Optimization starts!!!')
+    start = time.time()
+    val_acc = 0
+
+    for step in range(FLAGS.max_iter):
+
+        batch = data_loader.get_train_batch()
+        images_path, images_label = batch.images_path, batch.labels
+
+        # Validation
+        if ((step + 1) % FLAGS.display_freq) == 0 or ((step + 1) % FLAGS.summary_freq) == 0:
+            val_enroll_dict = data_loader.get_val_enrollment_batch().val_enroll_dict
+            validation_batch_dict = data_loader.get_val_batch()
+            val_acc = validate(sess, val_enroll_dict, validation_batch_dict, FLAGS)
+
+        fetches = {
+            "train": train.train,
+            "global_step": net.global_step,
+        }
+
+        if ((step + 1) % FLAGS.display_freq) == 0:
+            fetches["training_loss"] = train.loss
+            fetches["learning_rate"] = net.learning_rate
+
+        if ((step + 1) % FLAGS.summary_freq) == 0:
+            fetches["summary"] = sv.summary_op
+
+        results = sess.run(fetches, feed_dict={images_path_tensor: images_path, images_label_tensor: images_label,
+                                               val_accuracy: val_acc})
+
+        if ((step + 1) % FLAGS.summary_freq) == 0:
+            print('Recording summary !!!!')
+            sv.summary_writer.add_summary(results['summary'], results['global_step'])
+
+        if ((step + 1) % FLAGS.display_freq) == 0:
+            print("[PROGRESS] global step: %d | learning rate: %f | training_loss: %f | val_accuracy %0.1f" % (
+                results['global_step'], results['learning_rate'], results['training_loss'], val_acc))
+
+        if ((step + 1) % FLAGS.save_freq) == 0:
+            print('Save the checkpoint !!!!')
+            # TODO: Check wehter result['global_step'] needs to be passed instead
+            saver.save(sess, os.path.join(FLAGS.output_dir, 'model'), global_step=net.global_step)
+
+    print('Optimization done!!!!!!!!!!!!')

@@ -5,8 +5,6 @@ import functools
 
 import tensorflow as tf
 
-from dataloader import pre_process
-
 layers = tf.layers
 
 
@@ -214,7 +212,3 @@ class Network:
 
     def forward_pass(self, inputs):
         return self.net(inputs, training=False)
-
-
-
-

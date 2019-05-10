@@ -88,7 +88,7 @@ class DataLoader:
     def get_val_enrollment_batch(self, enrollment_size=2):
         self.enrollment_size = enrollment_size
         self.val_enroll_images_path, self.val_enroll_dict = [], {}
-        data = collections.namedtuple('data', 'images_path, label_dict')
+        data = collections.namedtuple('data', 'images_path, val_enroll_dict')
         all_labels = self.val_labels
         data_dict = self.val_dict
 
@@ -100,7 +100,7 @@ class DataLoader:
 
         return data(
             images_path=self.val_enroll_images_path,
-            label_dict=self.val_enroll_dict
+            val_enroll_dict=self.val_enroll_dict
         )
 
 
