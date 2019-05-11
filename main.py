@@ -90,10 +90,12 @@ val_accuracy = tf.placeholder(tf.double, shape=[], name='val_accuracy')
 
 # Training
 net = Network(FLAGS)
-train = net(pre_process(images_path_tensor, FLAGS), images_label_tensor)
+images_tensor = pre_process(images_path_tensor, FLAGS)
+train = net(images_tensor, images_label_tensor)
 
 # Add summaries
 tf.summary.histogram("embeddings_histogram", train.embeddings)
+tf.summary.image("train_images", images_tensor)
 tf.summary.scalar("train_loss", train.loss)
 tf.summary.scalar("learning_rate", net.learning_rate)
 tf.summary.scalar("val_accuracy", val_accuracy)

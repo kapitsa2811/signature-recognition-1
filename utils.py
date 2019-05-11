@@ -165,7 +165,7 @@ def get_closest_emb_label(enrolled_emb_dic: dict, embedding_list, np_ord=2):
 
 def validate(sess: tf.Session, net, val_enroll_dict: dict, val_batch_dict: dict, FLAGS):
     enrolled_emb_dict = {}
-    images_path_tensor = tf.placeholder(tf.string, shape=[None, ], name='images_path_tensor')
+    images_path_tensor = tf.placeholder(tf.string, shape=[None, ], name='images_path_tensor_val')
     _enroll_embeddings = enroll(net, images_path_tensor, FLAGS)
     _embedding_list = infer(net, images_path_tensor, FLAGS)
     for l, images_paths in val_enroll_dict.items():

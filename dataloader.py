@@ -5,7 +5,6 @@ import os
 import re
 
 import numpy as np
-import tensorflow as tf
 
 
 def prepare_image_paths(image_dir):
@@ -102,5 +101,3 @@ class DataLoader:
             images_path=self.val_enroll_images_path,
             val_enroll_dict=self.val_enroll_dict
         )
-
-
