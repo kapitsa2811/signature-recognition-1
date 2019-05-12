@@ -120,11 +120,11 @@ def process_singe_image(image_path, FLAGS, mode):
             image = tf.pad(image, ([0, h_diff], [0, w_diff], [0, 0]), constant_values=0.999)
 
     image = tf.expand_dims(image, 0)
-    with tf.name_scope("brightness_contrast_hue_saturation"):
-        image = tf.image.random_brightness(image, FLAGS.max_delta)
-        image = tf.image.random_contrast(image, 0, FLAGS.max_delta)
-        image = tf.image.random_hue(image, FLAGS.max_delta)
-        image = tf.image.random_saturation(image, 0, FLAGS.max_saturation_delta)
+    # with tf.name_scope("brightness_contrast_hue_saturation"):
+    #     image = tf.image.random_brightness(image, FLAGS.max_delta)
+    #     image = tf.image.random_contrast(image, 0, FLAGS.max_delta)
+    #     image = tf.image.random_hue(image, FLAGS.max_delta)
+    #     image = tf.image.random_saturation(image, 0, FLAGS.max_saturation_delta)
 
     with tf.name_scope("random_crop"):
         random_size = tf.random_uniform([], minval=0.6, maxval=1.0, dtype=tf.float32)
@@ -184,10 +184,10 @@ def get_closest_emb_label(enrolled_emb_dic: dict, embedding_list, np_ord=2):
     return labels
 
 
-def validate(sess: tf.Session, net, images_path_tensor_val, val_enroll_dict: dict, val_batch_dict: dict, FLAGS):
+def validate(sess: tf.Session, val_forward_pass, images_path_tensor_val, val_enroll_dict: dict, val_batch_dict: dict, FLAGS):
     enrolled_emb_dict = {}
-    _enroll_embeddings = enroll(net, images_path_tensor_val, FLAGS)
-    _embedding_list = infer(net, images_path_tensor_val, FLAGS)
+    _enroll_embeddings = enroll(val_forward_pass, images_path_tensor_val, FLAGS)
+    _embedding_list = infer(val_forward_pass, images_path_tensor_val, FLAGS)
     for l, images_paths in val_enroll_dict.items():
         enrolled_emb_dict[l] = sess.run(_enroll_embeddings, feed_dict={images_path_tensor_val: images_paths})
 

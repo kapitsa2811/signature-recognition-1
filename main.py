@@ -9,8 +9,8 @@ import tensorflow as tf
 
 from dataloader import DataLoader
 from model import Network
+from utils import pre_process
 from utils import print_configuration_op
-from utils import validate, pre_process
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
@@ -59,7 +59,7 @@ Flags.DEFINE_float('beta', 0.9, 'The beta1 parameter for the Adam optimizer')
 Flags.DEFINE_integer('max_iter', 1000000, 'The max iteration of the training')
 Flags.DEFINE_integer('display_freq', 20, 'The diplay frequency of the training process')
 Flags.DEFINE_integer('summary_freq', 100, 'The frequency of writing summary')
-Flags.DEFINE_integer('save_freq', 10000, 'The frequency of saving checkpoint')
+Flags.DEFINE_integer('save_freq', 1000, 'The frequency of saving checkpoint')
 
 FLAGS = Flags.FLAGS
 
@@ -98,15 +98,19 @@ val_accuracy = tf.placeholder(tf.double, shape=[], name='val_accuracy')
 print('[INFO]: getting training model')
 net = Network(FLAGS)
 images_tensor = pre_process(images_path_tensor, FLAGS)
-# images_tensor = tf.cast(images_tensor, dtype=tf.float32)
-# print("dtype: ", images_tensor.dtype)
-train = net(images_tensor, images_label_tensor)
-val_forward_pass = net.forward_pass(images_path_tensor_val)
+_print_shape = tf.Print(images_tensor, [tf.shape(images_tensor)], message="[INFO] current train batch shape: ",
+                        first_n=1)
+with tf.control_dependencies([_print_shape]):
+    train = net(images_tensor, images_label_tensor)
+
+# Validation
+# val_image_tensor = pre_process(images_path_tensor_val, FLAGS, mode='val')
+# val_forward_pass = net.forward_pass(images_path_tensor_val)
 
 # Add summaries
 print('[INFO]: Adding summaries')
 tf.summary.histogram("embeddings_histogram", train.embeddings)
-tf.summary.image("train_images", images_tensor)
+tf.summary.image("train_images", images_tensor, max_outputs=10)
 tf.summary.scalar("train_loss", train.loss)
 tf.summary.scalar("learning_rate", net.learning_rate)
 tf.summary.scalar("val_accuracy", val_accuracy)
