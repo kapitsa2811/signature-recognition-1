@@ -33,14 +33,12 @@ Flags.DEFINE_boolean('pre_trained_model', False,
                      'the global_step will be initiallized from the checkpoint, too')
 
 # DataLoader Parameters
-Flags.DEFINE_string('train_dir',
-                    '/mnt/069A453E9A452B8D/Ram/slomo_data/DeepVideoDeblurring_Dataset_Original_High_FPS_Videos/'
-                    'original_high_fps_videos',
-                    'Video data folder')
-Flags.DEFINE_string('val_dir', None, 'The directory to extract videos temporarily')
-Flags.DEFINE_integer('batch_labels_size', 3, 'Number of labels in each batch. min 2, P')
-Flags.DEFINE_integer('batch_image_per_label', 2, 'Number of images per label. min 2, K, batch size = P*K')
-Flags.DEFINE_integer('val_batch_image_per_label', 5, 'Number of images per label for validation.')
+Flags.DEFINE_string('train_dir', None, 'The train data directory')
+Flags.DEFINE_string('val_dir', None, 'The validation data directory')
+Flags.DEFINE_integer('batch_labels_size', 8, 'Number of labels in each batch. min 2, P')
+Flags.DEFINE_integer('batch_image_per_label', 4, 'Number of images per label. min 2, K, batch size = P*K')
+Flags.DEFINE_integer('val_batch_image_per_label', 10, 'Number of images per label for validation.')
+Flags.DEFINE_integer('val_enrollment_size', 5, 'Number of images per label for enrollment size.')
 Flags.DEFINE_integer('batch_thread', 4, 'The number of threads to process image queue for generating batches')
 Flags.DEFINE_integer('image_size', 224, 'Image crop size (image_size x image_size)')
 Flags.DEFINE_float('max_delta', 0.4, 'max delta for brightness, contrast and hue [0,0.5]')
@@ -50,6 +48,7 @@ Flags.DEFINE_float('max_saturation_delta', 2, 'max delta for saturation [0,3]')
 Flags.DEFINE_integer('embedding_size', 128, 'output embedding size')
 Flags.DEFINE_string('loss', 'semi-hard', 'primary loss function. (semi-hard: triplet loss with semi-hard negative '
                                          'mining | hard: triplet loss with hard negative mining)')
+Flags.DEFINE_float('loss_margin', 1.0, 'The learning rate for the network')
 
 # Trainer Parameters
 Flags.DEFINE_float('learning_rate', 0.001, 'The learning rate for the network')
@@ -71,6 +70,9 @@ print_configuration_op(FLAGS)
 if FLAGS.output_dir is None or FLAGS.summary_dir is None:
     raise ValueError('The output directory and summary directory are needed')
 
+if FLAGS.train_dir is None or FLAGS.val_dir is None:
+    raise ValueError('The train directory and val directory are needed')
+
 # Check the output directory to save the checkpoint
 if not os.path.exists(FLAGS.output_dir):
     os.mkdir(FLAGS.output_dir)
@@ -81,19 +83,28 @@ if not os.path.exists(FLAGS.summary_dir):
 
 # Initialize DataLoader
 data_loader = DataLoader(FLAGS)
+data_size = data_loader.get_data_size()
+print('[DATA LOADED] train size: %d with %d writers, val size: %d with %d writers' % (
+    data_size.train, data_size.train_labels, data_size.val, data_size.val_labels))
 
 # Defining Placeholder
 images_path_tensor = tf.placeholder(tf.string, shape=[None, ], name='image_path_tensors')
 images_label_tensor = tf.placeholder(tf.int32, shape=[None, ], name='image_lables_tensor')
-# # A hock to add validation accuracy in tensorboard
+images_path_tensor_val = tf.placeholder(tf.string, shape=[None, ], name='images_path_tensor_val')
+# # A hack to add validation accuracy in tensorboard
 val_accuracy = tf.placeholder(tf.double, shape=[], name='val_accuracy')
 
 # Training
+print('[INFO]: getting training model')
 net = Network(FLAGS)
 images_tensor = pre_process(images_path_tensor, FLAGS)
+# images_tensor = tf.cast(images_tensor, dtype=tf.float32)
+# print("dtype: ", images_tensor.dtype)
 train = net(images_tensor, images_label_tensor)
+val_forward_pass = net.forward_pass(images_path_tensor_val)
 
 # Add summaries
+print('[INFO]: Adding summaries')
 tf.summary.histogram("embeddings_histogram", train.embeddings)
 tf.summary.image("train_images", images_tensor)
 tf.summary.scalar("train_loss", train.loss)
@@ -118,15 +129,15 @@ sv = tf.train.Supervisor(logdir=FLAGS.summary_dir, save_summaries_secs=0, saver=
 with sv.managed_session(config=config) as sess:
     # TODO: check the saving checkpoint part for below both
     if (FLAGS.checkpoint is not None) and (FLAGS.pre_trained_model is False):
-        print('Loading model from the checkpoint...')
+        print('[INFO]: Loading model from the checkpoint...')
         checkpoint = tf.train.latest_checkpoint(FLAGS.checkpoint)
         saver.restore(sess, checkpoint)
 
     elif (FLAGS.checkpoint is not None) and (FLAGS.pre_trained_model is True):
-        print('Loading weights from the pre-trained model')
+        print('[INFO]: Loading weights from the pre-trained model')
         weight_initializer.restore(sess, FLAGS.checkpoint)
 
-    print('Optimization starts!!!')
+    print('[INFO] Optimization starts!!!')
     start = time.time()
     val_acc = 0
 
@@ -136,10 +147,13 @@ with sv.managed_session(config=config) as sess:
         images_path, images_label = batch.images_path, batch.labels
 
         # Validation
-        if ((step + 1) % FLAGS.display_freq) == 0 or ((step + 1) % FLAGS.summary_freq) == 0:
-            val_enroll_dict = data_loader.get_val_enrollment_batch().val_enroll_dict
-            validation_batch_dict = data_loader.get_val_batch()
-            val_acc = validate(sess, val_enroll_dict, validation_batch_dict, FLAGS)
+        # TODO: add validation images to tensorboard
+        # if ((step + 1) % FLAGS.display_freq) == 0 or ((step + 1) % FLAGS.summary_freq) == 0:
+        #     # print("[INFO]: Validation Step.")
+        #     val_enroll_dict = data_loader.get_val_enrollment_batch().val_enroll_dict
+        #     validation_batch_dict = data_loader.get_val_batch()
+        #     val_acc = validate(sess, val_forward_pass, images_path_tensor_val, val_enroll_dict, validation_batch_dict,
+        #                        FLAGS)
 
         fetches = {
             "train": train.train,
@@ -157,16 +171,16 @@ with sv.managed_session(config=config) as sess:
                                                val_accuracy: val_acc})
 
         if ((step + 1) % FLAGS.summary_freq) == 0:
-            print('Recording summary !!!!')
+            print('[INFO]: Recording summary !!!!')
             sv.summary_writer.add_summary(results['summary'], results['global_step'])
 
         if ((step + 1) % FLAGS.display_freq) == 0:
-            print("[PROGRESS] global step: %d | learning rate: %f | training_loss: %f | val_accuracy %0.1f" % (
+            print("[PROGRESS]: global step: %d | learning rate: %f | training_loss: %f | val_accuracy %0.1f" % (
                 results['global_step'], results['learning_rate'], results['training_loss'], val_acc))
 
         if ((step + 1) % FLAGS.save_freq) == 0:
-            print('Save the checkpoint !!!!')
+            print('[INFO]: Save the checkpoint !!!!')
             # TODO: Check wehter result['global_step'] needs to be passed instead
             saver.save(sess, os.path.join(FLAGS.output_dir, 'model'), global_step=net.global_step)
 
-    print('Optimization done!!!!!!!!!!!!')
+    print('[INFO]: Optimization done!!!!!!!!!!!!')

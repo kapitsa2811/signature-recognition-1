@@ -33,7 +33,7 @@ class DataLoader:
         self.FLAGS = FLAGS
 
         self.val_enroll_images_path, self.val_enroll_dict = [], {}
-        self.enrollment_size = 0
+        self.enrollment_size = self.FLAGS.val_enrollment_size
         self.train_dict, self.train_len, self.labels = prepare_image_paths(self.FLAGS.train_dir)
         self.val_dict, self.val_len, self.val_labels = prepare_image_paths(self.FLAGS.val_dir)
 
@@ -61,10 +61,12 @@ class DataLoader:
         )  # TODO: check whether list will work
 
     def get_data_size(self):
-        data_size = collections.namedtuple('data_size', 'train, val')
+        data_size = collections.namedtuple('data_size', 'train, val,train_labels, val_labels')
         return data_size(
             train=self.train_len,
-            val=self.val_len
+            train_labels=len(self.labels),
+            val=self.val_len,
+            val_labels=len(self.val_labels)
         )
 
     def get_val_batch(self):
@@ -73,6 +75,7 @@ class DataLoader:
         data_dict = self.val_dict
 
         for l in all_labels:
+            # print('[LABEL]: ', l, len(data_dict[l]))
             assert len(data_dict[l]) > self.enrollment_size + self.FLAGS.val_batch_image_per_label
             inserted = 0
             images_path = []
@@ -84,16 +87,15 @@ class DataLoader:
             val_batch_dict[l] = images_path
         return val_batch_dict
 
-    def get_val_enrollment_batch(self, enrollment_size=2):
-        self.enrollment_size = enrollment_size
+    def get_val_enrollment_batch(self):
         self.val_enroll_images_path, self.val_enroll_dict = [], {}
         data = collections.namedtuple('data', 'images_path, val_enroll_dict')
         all_labels = self.val_labels
         data_dict = self.val_dict
 
         for l in all_labels:
-            assert len(data_dict[l]) > enrollment_size
-            _batch = np.random.choice(data_dict[l], size=enrollment_size, replace=False)
+            assert len(data_dict[l]) > self.enrollment_size
+            _batch = np.random.choice(data_dict[l], size=self.enrollment_size, replace=False)
             self.val_enroll_dict[l] = _batch
             self.val_enroll_images_path.extend(_batch)
 

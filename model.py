@@ -5,7 +5,8 @@ import functools
 
 import tensorflow as tf
 
-layers = tf.layers
+# layers = tf.layers
+layers = tf.keras.layers
 
 
 # Loss Helper Functions
@@ -170,12 +171,12 @@ class Network:
         self.FLAGS = FLAGS
         self.embedding_size = FLAGS.embedding_size
         self.var_scope = var_scope
-        self.global_step = tf.contrib.framework.get_or_create_global_step()
+        self.global_step = tf.train.get_or_create_global_step()
         self.learning_rate = FLAGS.learning_rate
         self.var_scope = var_scope
+        self.reuse = reuse
 
-        with tf.variable_scope(var_scope, reuse=reuse):
-            self.net = Resnet50(self.embedding_size)
+        self.net = Resnet50(self.embedding_size)
 
         if FLAGS.loss == 'semi-hard':
             self.loss_fn = functools.partial(semihard_mining_triplet_loss, margin=FLAGS.loss_margin)
@@ -187,7 +188,8 @@ class Network:
 
     def __call__(self, inputs, labels, training=True):
         net_output = collections.namedtuple('net_output', 'embeddings, loss, train')
-        embeddings = self.net(inputs, training=training)
+        with tf.variable_scope(self.var_scope, reuse=self.reuse):
+            embeddings = self.net(inputs, training=training)
         loss = self.loss_fn(labels=labels, embeddings=embeddings)
 
         with tf.variable_scope("optimizer"):
@@ -211,4 +213,6 @@ class Network:
         )
 
     def forward_pass(self, inputs):
-        return self.net(inputs, training=False)
+        with tf.variable_scope(self.var_scope, reuse=tf.AUTO_REUSE):
+            output = self.net(inputs, training=False)
+        return output
