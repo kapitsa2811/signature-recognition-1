@@ -137,14 +137,11 @@ def process_singe_image(image_path, FLAGS, mode):
 
 
 def pre_process(image_paths_tensor, FLAGS, mode='train'):
-    with tf.variable_scope('pre-process'):
-        # image_paths_list = data.images_path
-        # image_paths_tensor = tf.convert_to_tensor(image_paths_list, dtype=tf.string)
+    with tf.variable_scope('pre-process', reuse=tf.AUTO_REUSE):
         image_batch = tf.map_fn(lambda image_path: process_singe_image(image_path, FLAGS, mode), image_paths_tensor,
                                 dtype=tf.float32)
         image_batch = tf.stack(image_batch, axis=0)
-        print('[BATCH SHAPE]:', image_batch.get_shape(), image_batch.dtype)
-        # image_batch = tf.cast(image_batch, dtype=tf.float32)
+        print('[BATCH SHAPE]:', mode, image_batch.get_shape(), image_batch.dtype)
         return image_batch
 
 
@@ -157,11 +154,11 @@ def pre_process(image_paths_tensor, FLAGS, mode='train'):
 #     return enrollment_dict
 
 
-def enroll(net, image_path_tensor, FLAGS):
-    with tf.variable_scope('enroll'):
-        images = pre_process(image_path_tensor, FLAGS, mode='val')
-        embeddings = net.forward_pass(images)
-        return tf.reduce_mean(embeddings, axis=0)
+# def enroll(net, image_path_tensor, FLAGS):
+#     with tf.variable_scope('enroll'):
+#         images = pre_process(image_path_tensor, FLAGS, mode='val')
+#         embeddings = net.forward_pass(images)
+#         return tf.reduce_mean(embeddings, axis=0)
 
 
 def infer(net, image_path_tensor, FLAGS):
@@ -184,17 +181,19 @@ def get_closest_emb_label(enrolled_emb_dic: dict, embedding_list, np_ord=2):
     return labels
 
 
-def validate(sess: tf.Session, val_forward_pass, images_path_tensor_val, val_enroll_dict: dict, val_batch_dict: dict, FLAGS):
+def validate(sess: tf.Session, val_forward_pass, images_path_tensor_val, val_enroll_dict: dict, val_batch_dict: dict,
+             FLAGS):
     enrolled_emb_dict = {}
-    _enroll_embeddings = enroll(val_forward_pass, images_path_tensor_val, FLAGS)
-    _embedding_list = infer(val_forward_pass, images_path_tensor_val, FLAGS)
+    # _enroll_embeddings = enroll(val_forward_pass, images_path_tensor_val, FLAGS)
+    # _embedding_list = infer(val_forward_pass, images_path_tensor_val, FLAGS)
     for l, images_paths in val_enroll_dict.items():
-        enrolled_emb_dict[l] = sess.run(_enroll_embeddings, feed_dict={images_path_tensor_val: images_paths})
+        enrolled_emb_dict[l] = np.mean(sess.run(val_forward_pass, feed_dict={images_path_tensor_val: images_paths}),
+                                       axis=0)
 
     labels = []
     predicted = []
     for l, images_paths in val_batch_dict.items():
-        embedding_list = sess.run(_embedding_list, feed_dict={images_path_tensor_val: images_paths})
+        embedding_list = sess.run(val_forward_pass, feed_dict={images_path_tensor_val: images_paths})
         labels.extend([l] * len(embedding_list))
         predicted.extend(get_closest_emb_label(enrolled_emb_dict, embedding_list))
 

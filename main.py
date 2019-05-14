@@ -9,7 +9,7 @@ import tensorflow as tf
 
 from dataloader import DataLoader
 from model import Network
-from utils import pre_process
+from utils import pre_process, validate
 from utils import print_configuration_op
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -104,8 +104,11 @@ with tf.control_dependencies([_print_shape]):
     train = net(images_tensor, images_label_tensor)
 
 # Validation
-# val_image_tensor = pre_process(images_path_tensor_val, FLAGS, mode='val')
-# val_forward_pass = net.forward_pass(images_path_tensor_val)
+val_image_tensor = pre_process(images_path_tensor_val, FLAGS, mode='val')
+_print_val_shape = tf.Print(val_image_tensor, [tf.shape(val_image_tensor)], message="[INFO] current val batch shape: ",
+                            first_n=1)
+with tf.control_dependencies([_print_val_shape]):
+    val_forward_pass = net.forward_pass(val_image_tensor)
 
 # Add summaries
 print('[INFO]: Adding summaries')
@@ -152,12 +155,12 @@ with sv.managed_session(config=config) as sess:
 
         # Validation
         # TODO: add validation images to tensorboard
-        # if ((step + 1) % FLAGS.display_freq) == 0 or ((step + 1) % FLAGS.summary_freq) == 0:
-        #     # print("[INFO]: Validation Step.")
-        #     val_enroll_dict = data_loader.get_val_enrollment_batch().val_enroll_dict
-        #     validation_batch_dict = data_loader.get_val_batch()
-        #     val_acc = validate(sess, val_forward_pass, images_path_tensor_val, val_enroll_dict, validation_batch_dict,
-        #                        FLAGS)
+        if ((step + 1) % FLAGS.display_freq) == 0 or ((step + 1) % FLAGS.summary_freq) == 0:
+            # print("[INFO]: Validation Step.")
+            val_enroll_dict = data_loader.get_val_enrollment_batch().val_enroll_dict
+            validation_batch_dict = data_loader.get_val_batch()
+            val_acc = validate(sess, val_forward_pass, images_path_tensor_val, val_enroll_dict, validation_batch_dict,
+                               FLAGS)
 
         fetches = {
             "train": train.train,
