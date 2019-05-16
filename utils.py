@@ -12,7 +12,8 @@ import tensorflow as tf
 def print_configuration_op(FLAGS):
     print('[Configurations]:')
     # pdb.set_trace()
-    for name, value in FLAGS.flag_values_dict().items():
+    for name in FLAGS.__flags.keys():
+        value = getattr(FLAGS, name)
         if type(value) == float:
             print('\t%s: %f' % (name, value))
         elif type(value) == int:

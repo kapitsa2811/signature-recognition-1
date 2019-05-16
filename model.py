@@ -96,6 +96,7 @@ class IdentityBlock(tf.keras.Model):
 
 # Model
 # TODO: Add variable scope if it doesnt work
+# TODO: Add dropout and regularization
 class Resnet50(tf.keras.Model):
 
     def __init__(self, emb_size):
