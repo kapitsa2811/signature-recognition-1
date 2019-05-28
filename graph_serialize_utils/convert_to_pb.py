@@ -10,13 +10,10 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--model_path",
                     default='/mnt/069A453E9A452B8D/Ram/handwritten-data/experiment_2/model-83000',
                     help="path for model")
-parser.add_argument("--output_dir", default='./graph_serialize_utils/pb', help="output folder for pb")
+parser.add_argument("--output_dir", default='./graph_serialize_utils/model', help="output folder for pb")
 # parser.add_argument("--output_node", default='network/resnet50/fc1/BiasAdd', help="output operation node")
 
 args = parser.parse_args()
-
-if not os.path.exists(args.output_dir):
-    os.mkdir(args.output_dir)
 
 meta_path = args.model_path + '.meta'  # Your .meta file
 
@@ -43,11 +40,16 @@ output_node_names = ['embeddings']
 train_var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="network")
 weight_initializer = tf.train.Saver(train_var_list)
 
+# Builder
+builder = tf.saved_model.builder.SavedModelBuilder(args.output_dir)
+
 # Start the session
-config = tf.ConfigProto()
-config.gpu_options.allow_growth = True
-sv = tf.train.Supervisor(save_summaries_secs=0, saver=None)
-with sv.managed_session(config=config) as sess:
+# config = tf.ConfigProto()
+# config.gpu_options.allow_growth = True
+# sv = tf.train.Supervisor(save_summaries_secs=0, saver=None)
+# with sv.managed_session(config=config) as sess:
+with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
     weight_initializer.restore(sess, args.model_path)
 
     # Put name of all nodes in txt file
@@ -56,16 +58,5 @@ with sv.managed_session(config=config) as sess:
         for _node in output_nodes:
             file.write(_node + "\n")
 
-    # Remove Locking (Useful in batch normalization case)
-    gd = sess.graph.as_graph_def()
-
-    # Freeze the graph
-    frozen_graph_def = tf.graph_util.convert_variables_to_constants(
-        sess,
-        gd,
-        output_node_names)
-
-    output_path = os.path.join(args.output_dir, 'output_graph.pb')
-    # Save the frozen graph
-    with open(output_path, 'wb') as file:
-        file.write(frozen_graph_def.SerializeToString())
+    builder.add_meta_graph_and_variables(sess, [tf.saved_model.tag_constants.SERVING])
+    builder.save()
