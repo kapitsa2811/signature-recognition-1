@@ -22,9 +22,9 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 Flags = tf.app.flags
 
 # The system parameter
-Flags.DEFINE_string('output_dir', '/mnt/069A453E9A452B8D/Ram/handwritten-data/experiment_3',
+Flags.DEFINE_string('output_dir', '/mnt/069A453E9A452B8D/Ram/handwritten-data/experiment_sign',
                     'The output directory of the checkpoint')
-Flags.DEFINE_string('summary_dir', '/mnt/069A453E9A452B8D/Ram/handwritten-data/experiment_3/log/',
+Flags.DEFINE_string('summary_dir', '/mnt/069A453E9A452B8D/Ram/handwritten-data/experiment_sign/log/',
                     'The dirctory to output the summary')
 Flags.DEFINE_string('mode', 'train', 'The mode of the model train, test.')
 Flags.DEFINE_string('checkpoint', None, 'If provided, the weight will be restored from the provided checkpoint.'
@@ -35,13 +35,17 @@ Flags.DEFINE_boolean('pre_trained_model', False,
                      'the global_step will be initialized from the checkpoint, too')
 
 # DataLoader Parameters
-Flags.DEFINE_string('train_dir', '/mnt/069A453E9A452B8D/Ram/handwritten-data/iam-handwriting-top50/data_subset_train',
+Flags.DEFINE_string('train_dir', '/mnt/069A453E9A452B8D/Ram/handwritten-data/signatures/full_org',
                     'The train data directory')
-Flags.DEFINE_string('val_dir', '/mnt/069A453E9A452B8D/Ram/handwritten-data/iam-handwriting-top50/data_subset_val',
+Flags.DEFINE_string('val_dir',
+                    '/mnt/069A453E9A452B8D/Ram/handwritten-data/SigComp2009-training/NISDCC-offline-all-001-051-6g',
                     'The validation data directory')
+Flags.DEFINE_string('train_dataset_name', 'kaggle_signature', 'https://cedar.buffalo.edu/NIJ/data/signatures.rar')
+Flags.DEFINE_string('val_dataset_name', 'SigComp2009-training',
+                    'http://www.iapr-tc11.org/dataset/ICDAR_SignatureVerification/SigComp2009/SigComp2009-training.zip')
 Flags.DEFINE_integer('batch_labels_size', 8, 'Number of labels in each batch. min 2, P')
 Flags.DEFINE_integer('batch_image_per_label', 4, 'Number of images per label. min 2, K, batch size = P*K')
-Flags.DEFINE_integer('val_batch_image_per_label', 10, 'Number of images per label for validation.')
+Flags.DEFINE_integer('val_batch_image_per_label', 5, 'Number of images per label for validation.')
 Flags.DEFINE_integer('val_enrollment_size', 5, 'Number of images per label for enrollment size.')
 Flags.DEFINE_integer('batch_thread', 4, 'The number of threads to process image queue for generating batches')
 Flags.DEFINE_integer('image_size', 224, 'Image crop size (image_size x image_size)')
@@ -189,7 +193,7 @@ with sv.managed_session(config=config) as sess:
             sv.summary_writer.add_summary(results['summary'], results['global_step'])
 
         if ((step + 1) % FLAGS.display_freq) == 0:
-            print("[PROGRESS]: global step: %d | learning rate: %f | training_loss: %f | val_accuracy %0.1f" % (
+            print("[PROGRESS]: global step: %d | learning rate: %f | training_loss: %f | val_accuracy %f" % (
                 results['global_step'], results['learning_rate'], results['training_loss'], val_acc))
 
         if ((step + 1) % FLAGS.save_freq) == 0:

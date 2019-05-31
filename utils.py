@@ -85,27 +85,10 @@ def process_singe_image(image_path, FLAGS, mode):
         h, w, _ = shape(image)
         scale = tf.cast(FLAGS.image_size, dtype=tf.float32) / tf.cast(tf.cond(tf.less(h, w), lambda: w, lambda: h),
                                                                       dtype=tf.float32)
-        # image = tf.cond(tf.less_equal(scale, 1.0), lambda: tf.identity(image),
-        #                 lambda: tf.squeeze(tf.image.resize_bilinear(tf.expand_dims(image, 0), [
-        #                     tf.cast(tf.floor(scale * tf.cast(h, dtype=tf.float32)), dtype=tf.int32),
-        #                     tf.cast(tf.floor(scale * tf.cast(w, dtype=tf.float32)), dtype=tf.int32)])))
         image = tf.squeeze(tf.image.resize_bilinear(tf.expand_dims(image, 0), [
             tf.cast(tf.floor(scale * tf.cast(h, dtype=tf.float32)), dtype=tf.int32),
             tf.cast(tf.floor(scale * tf.cast(w, dtype=tf.float32)), dtype=tf.int32)]))
         image.set_shape([None, None, 3])
-
-    with tf.name_scope("extrapolate"):
-        with tf.name_scope("height"):
-            h1, _, _ = shape(image)
-            scale_h = tf.cast(FLAGS.image_size, dtype=tf.float32) / tf.cast(h1, dtype=tf.float32)
-            image = tf.cond(tf.less(scale_h, 2.0), lambda: tf.identity(image),
-                            lambda: duplicate(image, tf.floor(scale_h), "height", mode))
-
-        with tf.name_scope("width"):
-            _, w1, _ = shape(image)
-            scale_w = tf.cast(FLAGS.image_size, dtype=tf.float32) / tf.cast(w1, dtype=tf.float32)
-            image = tf.cond(tf.less(scale_w, 2.0), lambda: tf.identity(image),
-                            lambda: duplicate(image, tf.floor(scale_w), "width", mode))
 
     with tf.name_scope("pad"):
         h2, w2, _ = shape(image)
@@ -120,18 +103,6 @@ def process_singe_image(image_path, FLAGS, mode):
         with tf.control_dependencies([assert_positive_hdiff, assert_positive_wdiff]):
             image = tf.pad(image, ([0, h_diff], [0, w_diff], [0, 0]), constant_values=0.999)
 
-    image = tf.expand_dims(image, 0)
-    # with tf.name_scope("brightness_contrast_hue_saturation"):
-    #     image = tf.image.random_brightness(image, FLAGS.max_delta)
-    #     image = tf.image.random_contrast(image, 0, FLAGS.max_delta)
-    #     image = tf.image.random_hue(image, FLAGS.max_delta)
-    #     image = tf.image.random_saturation(image, 0, FLAGS.max_saturation_delta)
-
-    with tf.name_scope("random_crop"):
-        random_size = tf.random_uniform([], minval=0.6, maxval=1.0, dtype=tf.float32)
-        image = tf.image.crop_and_resize(image, boxes=[[0, 0, random_size, random_size]], box_ind=[0],
-                                         crop_size=[FLAGS.image_size, FLAGS.image_size])
-    image = tf.squeeze(image)
     image.set_shape([FLAGS.image_size, FLAGS.image_size, 3])
     # image = tf.cast(image, dtype=tf.float32)
     return image
@@ -144,22 +115,6 @@ def pre_process(image_paths_tensor, FLAGS, mode='train'):
         image_batch = tf.stack(image_batch, axis=0)
         print('[BATCH SHAPE]:', mode, image_batch.get_shape(), image_batch.dtype)
         return image_batch
-
-
-# def val_pre_process(data_dict: dict, FLAGS):
-#     data = collections.namedtuple('data', 'images_path, labels')
-#     enrollment_dict = {}
-#     for label, images_path in data_dict.items():
-#         dummy_data = data(images_path=images_path, labels=[0])
-#         enrollment_dict[label], _ = pre_process(dummy_data, FLAGS, mode='val')
-#     return enrollment_dict
-
-
-# def enroll(net, image_path_tensor, FLAGS):
-#     with tf.variable_scope('enroll'):
-#         images = pre_process(image_path_tensor, FLAGS, mode='val')
-#         embeddings = net.forward_pass(images)
-#         return tf.reduce_mean(embeddings, axis=0)
 
 
 def infer(net, image_path_tensor, FLAGS):
@@ -188,8 +143,8 @@ def validate(sess: tf.Session, val_forward_pass, images_path_tensor_val, val_enr
     # _enroll_embeddings = enroll(val_forward_pass, images_path_tensor_val, FLAGS)
     # _embedding_list = infer(val_forward_pass, images_path_tensor_val, FLAGS)
     for l, images_paths in val_enroll_dict.items():
-        enrolled_emb_dict[l] = np.mean(sess.run(val_forward_pass, feed_dict={images_path_tensor_val: images_paths}),
-                                       axis=0)
+        _embeddings = sess.run(val_forward_pass, feed_dict={images_path_tensor_val: images_paths})
+        enrolled_emb_dict[l] = np.mean(_embeddings, axis=0)
 
     labels = []
     predicted = []

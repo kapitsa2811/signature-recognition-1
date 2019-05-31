@@ -2,15 +2,19 @@ from __future__ import division, absolute_import, print_function
 
 import collections
 import os
-import re
 
 import numpy as np
 
 
-def prepare_image_paths(image_dir):
+def prepare_image_paths(image_dir, dataset_name):
     images_list = os.listdir(image_dir)
-    images_list = [image_path for image_path in images_list if image_path.endswith(".png")]
-    labels = [image_path[0:3] for image_path in images_list]
+    images_list = [image_path for image_path in images_list if image_path.lower().endswith(".png")]
+    if dataset_name == 'kaggle_signature':
+        labels = [image_path.split("_")[1] for image_path in images_list]
+    elif dataset_name == 'SigComp2009-training':
+        labels = [image_path[7:10] for image_path in images_list]
+    else:
+        raise ValueError("Unknown dataset: " + dataset_name)
     images_list = [os.path.join(image_dir, image_path) for image_path in images_list]
     images_dict = {}
     for ind, image_path in enumerate(images_list):
@@ -21,8 +25,8 @@ def prepare_image_paths(image_dir):
             images_dict[label] = [image_path]
 
     labels = list(set(labels))
-    for label in labels:
-        assert re.match('^[a-z]0[0-9]$', label)
+    # for label in labels:
+    #     assert re.match('^[a-z]0[0-9]$', label)
 
     return images_dict, len(images_list), labels
 
@@ -34,8 +38,11 @@ class DataLoader:
 
         self.val_enroll_images_path, self.val_enroll_dict = [], {}
         self.enrollment_size = self.FLAGS.val_enrollment_size
-        self.train_dict, self.train_len, self.labels = prepare_image_paths(self.FLAGS.train_dir)
-        self.val_dict, self.val_len, self.val_labels = prepare_image_paths(self.FLAGS.val_dir)
+        self.train_dict, self.train_len, self.labels = prepare_image_paths(self.FLAGS.train_dir,
+                                                                           FLAGS.train_dataset_name)
+        self.val_dict, self.val_len, self.val_labels = prepare_image_paths(self.FLAGS.val_dir, FLAGS.val_dataset_name)
+        print("[INFO] train labels:", self.labels)
+        print("[INFO] val labels:", self.val_labels)
 
         # if len(self.labels) > len(self.val_labels):
         #     print("[WARNING]: some label are missing from validation set")
@@ -76,7 +83,11 @@ class DataLoader:
 
         for l in all_labels:
             # print('[LABEL]: ', l, len(data_dict[l]))
-            assert len(data_dict[l]) > self.enrollment_size + self.FLAGS.val_batch_image_per_label
+            if len(data_dict[l]) < self.enrollment_size:
+                continue
+            if len(data_dict[l]) < self.enrollment_size + self.FLAGS.val_batch_image_per_label:
+                # print('[WARNING] Skipped validation label:', l, "from batch. size:", len(data_dict[l]))
+                continue
             inserted = 0
             images_path = []
             while inserted < self.FLAGS.val_batch_image_per_label:
@@ -94,7 +105,9 @@ class DataLoader:
         data_dict = self.val_dict
 
         for l in all_labels:
-            assert len(data_dict[l]) > self.enrollment_size
+            if len(data_dict[l]) < self.enrollment_size:
+                print('[WARNING] Skipped validation label:', l, ". size:", len(data_dict[l]))
+                continue
             _batch = np.random.choice(data_dict[l], size=self.enrollment_size, replace=False)
             self.val_enroll_dict[l] = _batch
             self.val_enroll_images_path.extend(_batch)
