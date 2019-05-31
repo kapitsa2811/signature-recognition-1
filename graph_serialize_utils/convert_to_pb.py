@@ -1,6 +1,5 @@
 import argparse
 import collections
-import os
 
 import tensorflow as tf
 
