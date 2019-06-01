@@ -43,7 +43,7 @@ Flags.DEFINE_string('val_dir',
 Flags.DEFINE_string('train_dataset_name', 'kaggle_signature', 'https://cedar.buffalo.edu/NIJ/data/signatures.rar')
 Flags.DEFINE_string('val_dataset_name', 'SigComp2009-training',
                     'http://www.iapr-tc11.org/dataset/ICDAR_SignatureVerification/SigComp2009/SigComp2009-training.zip')
-Flags.DEFINE_integer('batch_labels_size', 8, 'Number of labels in each batch. min 2, P')
+Flags.DEFINE_integer('batch_labels_size', 16, 'Number of labels in each batch. min 2, P')
 Flags.DEFINE_integer('batch_image_per_label', 4, 'Number of images per label. min 2, K, batch size = P*K')
 Flags.DEFINE_integer('val_batch_image_per_label', 5, 'Number of images per label for validation.')
 Flags.DEFINE_integer('val_enrollment_size', 5, 'Number of images per label for enrollment size.')
@@ -54,7 +54,7 @@ Flags.DEFINE_float('max_saturation_delta', 2, 'max delta for saturation [0,3]')
 
 # model configurations
 Flags.DEFINE_integer('embedding_size', 128, 'output embedding size')
-Flags.DEFINE_string('loss', 'semi-hard', 'primary loss function. (semi-hard: triplet loss with semi-hard negative '
+Flags.DEFINE_string('loss', 'hard', 'primary loss function. (semi-hard: triplet loss with semi-hard negative '
                                          'mining | hard: triplet loss with hard negative mining)')
 Flags.DEFINE_float('loss_margin', 0.5, 'The learning rate for the network')
 

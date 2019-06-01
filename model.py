@@ -5,6 +5,8 @@ import functools
 
 import tensorflow as tf
 
+from triplet_loss import batch_hard_triplet_loss
+
 # layers = tf.layers
 layers = tf.keras.layers
 
@@ -28,33 +30,38 @@ class ConvBlock(tf.keras.Model):
 
         conv_name_base = 'res' + str(stage) + block + '_branch'
         bn_name_base = 'bn' + str(stage) + block + '_branch'
+        do_name_base = 'do' + str(stage) + block + '_branch'
 
         self.conv2a = layers.Conv2D(filters1, kernel_size=(1, 1), strides=strides, name=conv_name_base + '2a')
-        self.bn2a = layers.BatchNormalization(name=bn_name_base + '2a')
+        # self.bn2a = layers.BatchNormalization(name=bn_name_base + '2a')
+        self.do2a = layers.Dropout(0.1, name=do_name_base + '2a')
 
         self.conv2b = layers.Conv2D(filters2, kernel_size=kernel, padding='same', name=conv_name_base + '2b')
-        self.bn2b = layers.BatchNormalization(name=bn_name_base + '2b')
+        # self.bn2b = layers.BatchNormalization(name=bn_name_base + '2b')
+        self.do2b = layers.Dropout(0.1, name=do_name_base + '2b')
 
         self.conv2c = layers.Conv2D(filters3, kernel_size=(1, 1), name=conv_name_base + '2c')
-        self.bn2c = layers.BatchNormalization(name=bn_name_base + '2c')
+        # self.bn2c = layers.BatchNormalization(name=bn_name_base + '2c')
 
         self.conv_shortcut = layers.Conv2D(filters3, kernel_size=(1, 1), strides=strides, name=conv_name_base + '1')
-        self.bn_shortcut = layers.BatchNormalization(name=bn_name_base + '1')
+        # self.bn_shortcut = layers.BatchNormalization(name=bn_name_base + '1')
 
     def call(self, input_tensor, training=False, mask=None):
         x = self.conv2a(input_tensor)
-        x = self.bn2a(x, training=training)
+        # x = self.bn2a(x, training=training)
         x = tf.nn.relu(x)
+        x = self.do2a(x, training=training)
 
         x = self.conv2b(x)
-        x = self.bn2b(x, training=training)
+        # x = self.bn2b(x, training=training)
         x = tf.nn.relu(x)
+        x = self.do2b(x, training=training)
 
         x = self.conv2c(x)
-        x = self.bn2c(x, training=training)
+        # x = self.bn2c(x, training=training)
 
         shortcut = self.conv_shortcut(input_tensor)
-        shortcut = self.bn_shortcut(shortcut, training=training)
+        # shortcut = self.bn_shortcut(shortcut, training=training)
 
         x += shortcut
         return tf.nn.relu(x)
@@ -67,28 +74,33 @@ class IdentityBlock(tf.keras.Model):
         filters1, filters2, filters3 = filters
 
         conv_name_base = 'res' + str(stage) + block + '_branch'
-        bn_name_base = 'bn' + str(stage) + block + '_branch'
+        # bn_name_base = 'bn' + str(stage) + block + '_branch'
+        do_name_base = 'do' + str(stage) + block + '_branch'
 
         self.conv2a = layers.Conv2D(filters1, (1, 1), name=conv_name_base + '2a')
-        self.bn2a = layers.BatchNormalization(name=bn_name_base + '2a')
+        # self.bn2a = layers.BatchNormalization(name=bn_name_base + '2a')
+        self.do2a = layers.Dropout(0.1, name=do_name_base + '2a')
 
         self.conv2b = layers.Conv2D(filters2, kernel_size, padding='same', name=conv_name_base + '2b')
-        self.bn2b = layers.BatchNormalization(name=bn_name_base + '2b')
+        # self.bn2b = layers.BatchNormalization(name=bn_name_base + '2b')
+        self.do2b = layers.Dropout(0.1, name=do_name_base + '2b')
 
         self.conv2c = layers.Conv2D(filters3, (1, 1), name=conv_name_base + '2c')
-        self.bn2c = layers.BatchNormalization(name=bn_name_base + '2c')
+        # self.bn2c = layers.BatchNormalization(name=bn_name_base + '2c')
 
     def call(self, input_tensor, training=False, mask=None):
         x = self.conv2a(input_tensor)
-        x = self.bn2a(x, training=training)
+        # x = self.bn2a(x, training=training)
         x = tf.nn.relu(x)
+        x = self.do2a(x, training=training)
 
         x = self.conv2b(x)
-        x = self.bn2b(x, training=training)
+        # x = self.bn2b(x, training=training)
         x = tf.nn.relu(x)
+        x = self.do2b(x, training=training)
 
         x = self.conv2c(x)
-        x = self.bn2c(x, training=training)
+        # x = self.bn2c(x, training=training)
 
         x += input_tensor
         return tf.nn.relu(x)
@@ -103,7 +115,7 @@ class Resnet50(tf.keras.Model):
         super(Resnet50, self).__init__(name='')
 
         self.conv1 = layers.Conv2D(64, (7, 7), strides=(2, 2), padding='same', name='conv1')
-        self.bn_conv1 = layers.BatchNormalization(name='bn_conv1')
+        # self.bn_conv1 = layers.BatchNormalization(name='bn_conv1')
         self.max_pool = layers.MaxPooling2D((3, 3), strides=(2, 2), name='mx_pool1')
 
         self.l2a = ConvBlock([64, 64, 256], stage=2, block='a', strides=(1, 1))
@@ -133,7 +145,7 @@ class Resnet50(tf.keras.Model):
 
     def call(self, input_tensor, training=True, mask=None):
         x = self.conv1(input_tensor)
-        x = self.bn_conv1(x, training=training)
+        # x = self.bn_conv1(x, training=training)
         x = tf.nn.relu(x)
         x = self.max_pool(x)
 
@@ -176,14 +188,15 @@ class Network:
         self.learning_rate = FLAGS.learning_rate
         self.var_scope = var_scope
         self.reuse = reuse
+        self.regularizer = tf.keras.regularizers.l2(l=0.01)
 
         self.net = Resnet50(self.embedding_size)
 
         if FLAGS.loss == 'semi-hard':
             self.loss_fn = functools.partial(semihard_mining_triplet_loss, margin=FLAGS.loss_margin)
         elif FLAGS.loss == 'hard':
-            self.loss_fn = functools.partial(hard_mining_triplet_loss, margin=FLAGS.loss_margin)
-            raise ValueError("loss fn not implemented: " + FLAGS.loss)
+            self.loss_fn = functools.partial(batch_hard_triplet_loss, margin=FLAGS.loss_margin)
+            # raise ValueError("loss fn not implemented: " + FLAGS.loss)
         else:
             raise ValueError("unknown loss fn: " + FLAGS.loss)
 
