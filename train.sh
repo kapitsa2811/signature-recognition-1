@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 CUDA_VISIBLE_DEVICES=0 python main.py \
-    --output_dir /mnt/069A453E9A452B8D/Ram/handwritten-data/experiment_sign_semi \
-    --summary_dir /mnt/069A453E9A452B8D/Ram/handwritten-data/experiment_sign_semi/log/ \
+    --output_dir /mnt/069A453E9A452B8D/Ram/handwritten-data/experiment_sign_semi_reg \
+    --summary_dir /mnt/069A453E9A452B8D/Ram/handwritten-data/experiment_sign_semi_reg/log/ \
     --mode train \
     --train_dir /mnt/069A453E9A452B8D/Ram/handwritten-data/signatures/full_org \
     --val_dir /mnt/069A453E9A452B8D/Ram/handwritten-data/signatures/val \

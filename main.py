@@ -55,7 +55,7 @@ Flags.DEFINE_float('max_saturation_delta', 2, 'max delta for saturation [0,3]')
 # model configurations
 Flags.DEFINE_integer('embedding_size', 128, 'output embedding size')
 Flags.DEFINE_string('loss', 'hard', 'primary loss function. (semi-hard: triplet loss with semi-hard negative '
-                                         'mining | hard: triplet loss with hard negative mining)')
+                                    'mining | hard: triplet loss with hard negative mining)')
 Flags.DEFINE_float('loss_margin', 0.5, 'The learning rate for the network')
 
 # Trainer Parameters
@@ -126,6 +126,8 @@ print('[INFO]: Adding summaries')
 tf.summary.histogram("embeddings_histogram", train.embeddings)
 tf.summary.image("train_images", images_tensor, max_outputs=10)
 tf.summary.scalar("train_loss", train.loss)
+tf.summary.scalar("l2_loss", train.l2_loss)
+tf.summary.scalar("triplet_loss", train.triplet_loss)
 tf.summary.scalar("learning_rate", net.learning_rate)
 tf.summary.scalar("val_accuracy", val_accuracy)
 
@@ -180,6 +182,7 @@ with sv.managed_session(config=config) as sess:
 
         if ((step + 1) % FLAGS.display_freq) == 0:
             fetches["training_loss"] = train.loss
+            fetches["l2_loss"] = train.l2_loss
             fetches["learning_rate"] = net.learning_rate
 
         if ((step + 1) % FLAGS.summary_freq) == 0:
@@ -193,8 +196,10 @@ with sv.managed_session(config=config) as sess:
             sv.summary_writer.add_summary(results['summary'], results['global_step'])
 
         if ((step + 1) % FLAGS.display_freq) == 0:
-            print("[PROGRESS]: global step: %d | learning rate: %f | training_loss: %f | val_accuracy %f" % (
-                results['global_step'], results['learning_rate'], results['training_loss'], val_acc))
+            print(
+                "[PROGRESS]: global step: %d | learning rate: %f | training_loss: %f | l2_loss: %f |val_accuracy %f" % (
+                    results['global_step'], results['learning_rate'], results['training_loss'], results['l2_loss'],
+                    val_acc))
 
         if ((step + 1) % FLAGS.save_freq) == 0:
             print('[INFO]: Save the checkpoint !!!!')

@@ -9,7 +9,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--model_path",
                     default='/mnt/069A453E9A452B8D/Ram/handwritten-data/experiment_sign_semi/model-5000',
                     help="path for model")
-parser.add_argument("--output_dir", default='./graph_serialize_utils/model-sign', help="output folder for pb")
+parser.add_argument("--image_path", default='./graph_serialize_utils/test.png', help="input image 224 224")
 # parser.add_argument("--output_node", default='network/resnet50/fc1/BiasAdd', help="output operation node")
 
 args = parser.parse_args()
@@ -29,18 +29,25 @@ FLAGS = _FLAGS(
 
 # Model
 print('[INFO]: getting validation model')
-input_image = tf.placeholder(tf.float32, shape=[None, FLAGS.image_size, FLAGS.image_size, 3], name='input_images')
+path_tesnor = tf.convert_to_tensor(args.image_path, dtype=tf.string)
+image = tf.read_file(path_tesnor)
+image = tf.image.decode_png(image, channels=3)
+image = tf.image.convert_image_dtype(image, dtype=tf.float32)
+image = tf.expand_dims(image, axis=0)
+image.set_shape([1, 224, 224, 3])
+
+input_image = tf.image.resize_bilinear(image, size=[224, 224])
+input_image.set_shape([1, 224, 224, 3])
+
 net = Network(FLAGS)
-output = net.forward_pass(input_image)
-embeddings = tf.identity(output, name='embeddings')
-output_node_names = ['embeddings']
+_print = tf.Print(input_image[0, 0:5, 0:5, 0], [input_image[0, 0:5, 0:5, 0]], message="[IMAGE] : ",
+                  first_n=1)
+with tf.control_dependencies([_print]):
+    output = net.forward_pass(image)
 
 # Weight Initializer
 train_var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="network")
 weight_initializer = tf.train.Saver(train_var_list)
-
-# Builder
-builder = tf.saved_model.builder.SavedModelBuilder(args.output_dir)
 
 # Start the session
 # config = tf.ConfigProto()
@@ -50,14 +57,4 @@ builder = tf.saved_model.builder.SavedModelBuilder(args.output_dir)
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     weight_initializer.restore(sess, args.model_path)
-
-    # Put name of all nodes in txt file
-    output_nodes = [n.name for n in tf.get_default_graph().as_graph_def().node]
-    with open("nodes.txt", 'w') as file:
-        for _node in output_nodes:
-            file.write(_node + "\n")
-
-    builder.add_meta_graph_and_variables(sess, [tf.saved_model.tag_constants.TRAINING], strip_default_attrs=True)
-    builder.add_meta_graph([tf.saved_model.tag_constants.SERVING], strip_default_attrs=True)
-
-builder.save()
+    print(sess.run(output))

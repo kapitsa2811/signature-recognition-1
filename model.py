@@ -24,7 +24,7 @@ def hard_mining_triplet_loss(labels, embeddings, margin=1.0):
 # Model Helper Classes and Functions
 
 class ConvBlock(tf.keras.Model):
-    def __init__(self, filters, stage, block, kernel=3, strides=(2, 2)):
+    def __init__(self, filters, stage, block, regularizer, kernel=3, strides=(2, 2)):
         super(ConvBlock, self).__init__(name='')
         filters1, filters2, filters3 = filters
 
@@ -32,18 +32,22 @@ class ConvBlock(tf.keras.Model):
         bn_name_base = 'bn' + str(stage) + block + '_branch'
         do_name_base = 'do' + str(stage) + block + '_branch'
 
-        self.conv2a = layers.Conv2D(filters1, kernel_size=(1, 1), strides=strides, name=conv_name_base + '2a')
+        self.conv2a = layers.Conv2D(filters1, kernel_size=(1, 1), strides=strides, name=conv_name_base + '2a',
+                                    kernel_regularizer=regularizer, bias_regularizer=regularizer)
         # self.bn2a = layers.BatchNormalization(name=bn_name_base + '2a')
         self.do2a = layers.Dropout(0.1, name=do_name_base + '2a')
 
-        self.conv2b = layers.Conv2D(filters2, kernel_size=kernel, padding='same', name=conv_name_base + '2b')
+        self.conv2b = layers.Conv2D(filters2, kernel_size=kernel, padding='same', name=conv_name_base + '2b',
+                                    kernel_regularizer=regularizer, bias_regularizer=regularizer)
         # self.bn2b = layers.BatchNormalization(name=bn_name_base + '2b')
         self.do2b = layers.Dropout(0.1, name=do_name_base + '2b')
 
-        self.conv2c = layers.Conv2D(filters3, kernel_size=(1, 1), name=conv_name_base + '2c')
+        self.conv2c = layers.Conv2D(filters3, kernel_size=(1, 1), name=conv_name_base + '2c',
+                                    kernel_regularizer=regularizer, bias_regularizer=regularizer)
         # self.bn2c = layers.BatchNormalization(name=bn_name_base + '2c')
 
-        self.conv_shortcut = layers.Conv2D(filters3, kernel_size=(1, 1), strides=strides, name=conv_name_base + '1')
+        self.conv_shortcut = layers.Conv2D(filters3, kernel_size=(1, 1), strides=strides, name=conv_name_base + '1',
+                                           kernel_regularizer=regularizer, bias_regularizer=regularizer)
         # self.bn_shortcut = layers.BatchNormalization(name=bn_name_base + '1')
 
     def call(self, input_tensor, training=False, mask=None):
@@ -69,7 +73,7 @@ class ConvBlock(tf.keras.Model):
 
 class IdentityBlock(tf.keras.Model):
 
-    def __init__(self, filters, stage, block, kernel_size=3):
+    def __init__(self, filters, stage, block, regularizer, kernel_size=3):
         super(IdentityBlock, self).__init__(name='')
         filters1, filters2, filters3 = filters
 
@@ -77,15 +81,18 @@ class IdentityBlock(tf.keras.Model):
         # bn_name_base = 'bn' + str(stage) + block + '_branch'
         do_name_base = 'do' + str(stage) + block + '_branch'
 
-        self.conv2a = layers.Conv2D(filters1, (1, 1), name=conv_name_base + '2a')
+        self.conv2a = layers.Conv2D(filters1, (1, 1), name=conv_name_base + '2a', kernel_regularizer=regularizer,
+                                    bias_regularizer=regularizer)
         # self.bn2a = layers.BatchNormalization(name=bn_name_base + '2a')
         self.do2a = layers.Dropout(0.1, name=do_name_base + '2a')
 
-        self.conv2b = layers.Conv2D(filters2, kernel_size, padding='same', name=conv_name_base + '2b')
+        self.conv2b = layers.Conv2D(filters2, kernel_size, padding='same', name=conv_name_base + '2b',
+                                    kernel_regularizer=regularizer, bias_regularizer=regularizer)
         # self.bn2b = layers.BatchNormalization(name=bn_name_base + '2b')
         self.do2b = layers.Dropout(0.1, name=do_name_base + '2b')
 
-        self.conv2c = layers.Conv2D(filters3, (1, 1), name=conv_name_base + '2c')
+        self.conv2c = layers.Conv2D(filters3, (1, 1), name=conv_name_base + '2c', kernel_regularizer=regularizer,
+                                    bias_regularizer=regularizer)
         # self.bn2c = layers.BatchNormalization(name=bn_name_base + '2c')
 
     def call(self, input_tensor, training=False, mask=None):
@@ -111,37 +118,38 @@ class IdentityBlock(tf.keras.Model):
 # TODO: Add dropout and regularization
 class Resnet50(tf.keras.Model):
 
-    def __init__(self, emb_size):
+    def __init__(self, emb_size, regularizer):
         super(Resnet50, self).__init__(name='')
 
-        self.conv1 = layers.Conv2D(64, (7, 7), strides=(2, 2), padding='same', name='conv1')
+        self.conv1 = layers.Conv2D(64, (7, 7), strides=(2, 2), padding='same', name='conv1'
+                                   , kernel_regularizer=regularizer, bias_regularizer=regularizer)
         # self.bn_conv1 = layers.BatchNormalization(name='bn_conv1')
         self.max_pool = layers.MaxPooling2D((3, 3), strides=(2, 2), name='mx_pool1')
 
-        self.l2a = ConvBlock([64, 64, 256], stage=2, block='a', strides=(1, 1))
-        self.l2b = IdentityBlock([64, 64, 256], stage=2, block='b')
-        self.l2c = IdentityBlock([64, 64, 256], stage=2, block='c')
+        self.l2a = ConvBlock([64, 64, 256], stage=2, block='a', regularizer=regularizer, strides=(1, 1))
+        self.l2b = IdentityBlock([64, 64, 256], stage=2, regularizer=regularizer, block='b')
+        self.l2c = IdentityBlock([64, 64, 256], stage=2, regularizer=regularizer, block='c')
 
-        self.l3a = ConvBlock([128, 128, 512], stage=3, block='a')
-        self.l3b = IdentityBlock([128, 128, 512], stage=3, block='b')
-        self.l3c = IdentityBlock([128, 128, 512], stage=3, block='c')
-        self.l3d = IdentityBlock([128, 128, 512], stage=3, block='d')
+        self.l3a = ConvBlock([128, 128, 512], stage=3, regularizer=regularizer, block='a')
+        self.l3b = IdentityBlock([128, 128, 512], stage=3, regularizer=regularizer, block='b')
+        self.l3c = IdentityBlock([128, 128, 512], stage=3, regularizer=regularizer, block='c')
+        self.l3d = IdentityBlock([128, 128, 512], stage=3, regularizer=regularizer, block='d')
 
-        self.l4a = ConvBlock([256, 256, 1024], stage=4, block='a')
-        self.l4b = IdentityBlock([256, 256, 1024], stage=4, block='b')
-        self.l4c = IdentityBlock([256, 256, 1024], stage=4, block='c')
-        self.l4d = IdentityBlock([256, 256, 1024], stage=4, block='d')
-        self.l4e = IdentityBlock([256, 256, 1024], stage=4, block='e')
-        self.l4f = IdentityBlock([256, 256, 1024], stage=4, block='f')
+        self.l4a = ConvBlock([256, 256, 1024], stage=4, regularizer=regularizer, block='a')
+        self.l4b = IdentityBlock([256, 256, 1024], stage=4, regularizer=regularizer, block='b')
+        self.l4c = IdentityBlock([256, 256, 1024], stage=4, regularizer=regularizer, block='c')
+        self.l4d = IdentityBlock([256, 256, 1024], stage=4, regularizer=regularizer, block='d')
+        self.l4e = IdentityBlock([256, 256, 1024], stage=4, regularizer=regularizer, block='e')
+        self.l4f = IdentityBlock([256, 256, 1024], stage=4, regularizer=regularizer, block='f')
 
-        self.l5a = ConvBlock([512, 512, 2048], stage=5, block='a')
-        self.l5b = IdentityBlock([512, 512, 2048], stage=5, block='b')
-        self.l5c = IdentityBlock([512, 512, 2048], stage=5, block='c')
+        self.l5a = ConvBlock([512, 512, 2048], stage=5, regularizer=regularizer, block='a')
+        self.l5b = IdentityBlock([512, 512, 2048], stage=5, regularizer=regularizer, block='b')
+        self.l5c = IdentityBlock([512, 512, 2048], stage=5, regularizer=regularizer, block='c')
 
         self.avg_pool = layers.AveragePooling2D((7, 7), strides=(7, 7), name='avg_pool1')
 
         self.flatten = layers.Flatten()
-        self.fc = layers.Dense(emb_size, name='fc1')
+        self.fc = layers.Dense(emb_size, name='fc1', kernel_regularizer=regularizer, bias_regularizer=regularizer)
 
     def call(self, input_tensor, training=True, mask=None):
         x = self.conv1(input_tensor)
@@ -188,9 +196,9 @@ class Network:
         self.learning_rate = FLAGS.learning_rate
         self.var_scope = var_scope
         self.reuse = reuse
-        self.regularizer = tf.keras.regularizers.l2(l=0.01)
+        self.regularizer = tf.contrib.layers.l2_regularizer(scale=0.1)
 
-        self.net = Resnet50(self.embedding_size)
+        self.net = Resnet50(self.embedding_size, self.regularizer)
 
         if FLAGS.loss == 'semi-hard':
             self.loss_fn = functools.partial(semihard_mining_triplet_loss, margin=FLAGS.loss_margin)
@@ -201,10 +209,12 @@ class Network:
             raise ValueError("unknown loss fn: " + FLAGS.loss)
 
     def __call__(self, inputs, labels, training=True):
-        net_output = collections.namedtuple('net_output', 'embeddings, loss, train')
+        net_output = collections.namedtuple('net_output', 'embeddings, loss, l2_loss, triplet_loss, train')
         with tf.variable_scope(self.var_scope, reuse=self.reuse):
             embeddings = self.net(inputs, training=training)
-        loss = self.loss_fn(labels=labels, embeddings=embeddings)
+        l2_loss = tf.losses.get_regularization_loss()
+        triplet_loss = self.loss_fn(labels=labels, embeddings=embeddings)
+        loss = triplet_loss + l2_loss
 
         with tf.variable_scope("optimizer"):
             self.learning_rate = tf.train.exponential_decay(self.FLAGS.learning_rate, self.global_step,
@@ -223,6 +233,8 @@ class Network:
         return net_output(
             embeddings=embeddings,
             loss=loss,
+            l2_loss=l2_loss,
+            triplet_loss=triplet_loss,
             train=tf.group(loss, incr_global_step, train_op)
         )
 
