@@ -10,6 +10,7 @@ parser.add_argument("--model_path",
                     default='/mnt/069A453E9A452B8D/Ram/handwritten-data/experiment_sign_semi/model-5000',
                     help="path for model")
 parser.add_argument("--image_path", default='./graph_serialize_utils/test.png', help="input image 224 224")
+parser.add_argument("--output_dir", default='./graph_serialize_utils/model-sign', help="output folder for pb")
 # parser.add_argument("--output_node", default='network/resnet50/fc1/BiasAdd', help="output operation node")
 
 args = parser.parse_args()
@@ -46,8 +47,8 @@ with tf.control_dependencies([_print]):
     output = net.forward_pass(image)
 
 # Weight Initializer
-train_var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="network")
-weight_initializer = tf.train.Saver(train_var_list)
+# train_var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="network")
+# weight_initializer = tf.train.Saver(train_var_list)
 
 # Start the session
 # config = tf.ConfigProto()
@@ -55,6 +56,7 @@ weight_initializer = tf.train.Saver(train_var_list)
 # sv = tf.train.Supervisor(save_summaries_secs=0, saver=None)
 # with sv.managed_session(config=config) as sess:
 with tf.Session() as sess:
-    sess.run(tf.global_variables_initializer())
-    weight_initializer.restore(sess, args.model_path)
+    # sess.run(tf.global_variables_initializer())
+    # weight_initializer.restore(sess, args.model_path)
+    tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING], args.output_dir)
     print(sess.run(output))
