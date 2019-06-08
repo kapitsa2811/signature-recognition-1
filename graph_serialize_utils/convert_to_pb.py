@@ -10,15 +10,10 @@ parser.add_argument("--model_path",
                     default='/mnt/069A453E9A452B8D/Ram/handwritten-data/experiment_sign_semi/model-5000',
                     help="path for model")
 parser.add_argument("--output_dir", default='./graph_serialize_utils/model-sign', help="output folder for pb")
-# parser.add_argument("--output_node", default='network/resnet50/fc1/BiasAdd', help="output operation node")
-
 args = parser.parse_args()
-
-meta_path = args.model_path + '.meta'  # Your .meta file
 
 # FLAGS for model, Parameters should be same as training
 _FLAGS = collections.namedtuple('_FLAGS', 'embedding_size, loss, learning_rate, image_size, loss_margin')
-
 FLAGS = _FLAGS(
     loss='semi-hard',
     embedding_size=128,
@@ -29,8 +24,18 @@ FLAGS = _FLAGS(
 
 # Model
 print('[INFO]: getting validation model')
-input_image = tf.placeholder(tf.float32, shape=[None, FLAGS.image_size, FLAGS.image_size, 3], name='input_images')
 net = Network(FLAGS)
+
+path_tensor = tf.placeholder(tf.string, shape=[], name='image_path_tensors')
+image = tf.read_file(path_tensor)
+image = tf.image.decode_png(image, channels=3)
+image = tf.image.convert_image_dtype(image, dtype=tf.float32)
+image = tf.expand_dims(image, axis=0)
+image = tf.image.resize_bilinear(image, size=[224, 224])
+image.set_shape([1, 224, 224, 3])
+
+# input_image = tf.placeholder(tf.float32, shape=[None, FLAGS.image_size, FLAGS.image_size, 3], name='input_images')
+input_image = tf.identity(image, name='input_images')
 output = net.forward_pass(input_image)
 embeddings = tf.identity(output, name='embeddings')
 output_node_names = ['embeddings']
