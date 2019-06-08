@@ -53,15 +53,21 @@ For all available options, check main.py.
 
 I have implemented a spring boot Java application with react frontend to serve the model for inference, which is
 available [here](https://github.com/rmalav15/siamese-tf-java). 
-To use you model with Java app. Use graph_serialize_utils to convert (and visualize) tf model to (frozen) pb file.
+To use your model with Java app. Use graph_serialize_utils to convert (and visualize) tf model to (frozen) pb file.
 and follow instruction on above repo.
 
 # Notes
 
-- The [pretrained model](https://drive.google.com/file/d/1MOReElVkaKo1zH_oMyTdxBGA5FimXgQq/view?usp=sharing) is not 
+* The [pretrained model](https://drive.google.com/file/d/1MOReElVkaKo1zH_oMyTdxBGA5FimXgQq/view?usp=sharing) is not 
 explicitly trained for signature fraud detection. 
-- This code can be trained for any other siamese task by just providing appropriate train and val folder. 
+* This code can be trained for any other siamese task by just providing appropriate train and val folder. 
 No code change required.
-- Other signature dataset
-- Writer dataset
-- face dataset
+* Other signature dataset
+    * [SigComp2011](http://www.iapr-tc11.org/mediawiki/index.php/ICDAR_2011_Signature_Verification_Competition_(SigComp2011))
+    * [4NSigComp2012](http://www.iapr-tc11.org/mediawiki/index.php/ICFHR_2012_Signature_Verification_Competition_(4NSigComp2012))
+    * [Kaggle](https://www.kaggle.com/divyanshrai/handwritten-signatures)
+* Writer recognition dataset
+    * [IAM](http://www.fki.inf.unibe.ch/databases/iam-handwriting-database)
+* face dataset
+    * [CASIA-WebFace](https://github.com/happynear/AMSoftmax/issues/18)
+    * [VGGFACE](https://www.robots.ox.ac.uk/~vgg/data/vgg_face2/)
