@@ -54,6 +54,7 @@ Flags.DEFINE_float('max_saturation_delta', 2, 'max delta for saturation [0,3]')
 
 # model configurations
 Flags.DEFINE_integer('embedding_size', 128, 'output embedding size')
+Flags.DEFINE_float('dropout_rate', 0.1, 'Percentage of neuron to drop')
 Flags.DEFINE_string('loss', 'hard', 'primary loss function. (semi-hard: triplet loss with semi-hard negative '
                                     'mining | hard: triplet loss with hard negative mining)')
 Flags.DEFINE_float('loss_margin', 0.5, 'The learning rate for the network')

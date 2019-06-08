@@ -1,4 +1,7 @@
-"""Define functions to create the triplet loss with online triplet mining."""
+"""
+    Define functions to create the triplet loss with online triplet mining.
+    THIS FILE IS TAKEN FROM https://github.com/omoindrot/tensorflow-triplet-loss/blob/master/model/triplet_loss.py
+"""
 
 import tensorflow as tf
 
