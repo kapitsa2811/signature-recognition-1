@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 CUDA_VISIBLE_DEVICES=0 python main.py \
-    --output_dir /mnt/069A453E9A452B8D/Ram/handwritten-data/experiment_sign_semi_reg \
-    --summary_dir /mnt/069A453E9A452B8D/Ram/handwritten-data/experiment_sign_semi_reg/log/ \
+    --output_dir /handwritten-data/experiment_sign_semi_reg \
+    --summary_dir /handwritten-data/experiment_sign_semi_reg/log/ \
     --mode train \
-    --train_dir /mnt/069A453E9A452B8D/Ram/handwritten-data/signatures/full_org \
-    --val_dir /mnt/069A453E9A452B8D/Ram/handwritten-data/signatures/val \
+    --train_dir /handwritten-data/signatures/full_org \
+    --val_dir /handwritten-data/signatures/val \
     --val_dataset_name kaggle_signature \
     --learning_rate 0.0001 \
     --loss semi-hard \

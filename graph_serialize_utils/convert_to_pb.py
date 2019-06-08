@@ -7,7 +7,7 @@ from model import Network
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model_path",
-                    default='/mnt/069A453E9A452B8D/Ram/handwritten-data/experiment_sign_semi/model-5000',
+                    default='/handwritten-data/experiment_sign_semi/model-5000',
                     help="path for model")
 parser.add_argument("--output_dir", default='./graph_serialize_utils/model-sign', help="output folder for pb")
 args = parser.parse_args()
