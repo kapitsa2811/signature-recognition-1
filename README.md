@@ -49,14 +49,14 @@ CUDA_VISIBLE_DEVICES=0 python main.py \
 For all available options, check main.py.
 
 
-# Inference
+### Inference
 
 I have implemented a spring boot Java application with react frontend to serve the model for inference, which is
 available [here](https://github.com/rmalav15/siamese-tf-java). 
 To use your model with Java app. Use graph_serialize_utils to convert (and visualize) tf model to (frozen) pb file.
 and follow instruction on above repo.
 
-# Notes
+## Notes
 
 * The [pretrained model](https://drive.google.com/file/d/1MOReElVkaKo1zH_oMyTdxBGA5FimXgQq/view?usp=sharing) is not 
 explicitly trained for signature fraud detection. 
