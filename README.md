@@ -4,3 +4,5 @@ siamese network is trained with triplet loss with the choice of online semi-hard
 mining or hard negative mining. [[Blog for triplet loss]]() [[Blog for simaese]]()
 
 The network is trained on open-source [dataset]().
+
+<img src="./images/Siamese.png">
