@@ -48,6 +48,11 @@ CUDA_VISIBLE_DEVICES=0 python main.py \
 
 For all available options, check main.py.
 
+To observe the training losses, learning rate, graph and images, use tensorboard:
+```bash
+tensorboard --logdir [summary_dir]
+```
+
 
 ### Inference
 
