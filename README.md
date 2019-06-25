@@ -73,6 +73,6 @@ No code change required.
     * [Kaggle](https://www.kaggle.com/divyanshrai/handwritten-signatures)
 * Writer recognition dataset
     * [IAM](http://www.fki.inf.unibe.ch/databases/iam-handwriting-database)
-* face dataset
+* face dataset (For face reco training, face alignment logic would be required)
     * [CASIA-WebFace](https://github.com/happynear/AMSoftmax/issues/18)
     * [VGGFACE](https://www.robots.ox.ac.uk/~vgg/data/vgg_face2/)
