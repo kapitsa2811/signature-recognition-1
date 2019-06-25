@@ -48,6 +48,11 @@ CUDA_VISIBLE_DEVICES=0 python main.py \
 
 For all available options, check main.py.
 
+To observe the training losses, learning rate, graph and images, use tensorboard:
+```bash
+tensorboard --logdir [summary_dir]
+```
+
 
 ### Inference
 
@@ -68,6 +73,6 @@ No code change required.
     * [Kaggle](https://www.kaggle.com/divyanshrai/handwritten-signatures)
 * Writer recognition dataset
     * [IAM](http://www.fki.inf.unibe.ch/databases/iam-handwriting-database)
-* face dataset
+* face dataset (For face reco training, face alignment logic would be required)
     * [CASIA-WebFace](https://github.com/happynear/AMSoftmax/issues/18)
     * [VGGFACE](https://www.robots.ox.ac.uk/~vgg/data/vgg_face2/)
