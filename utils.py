@@ -71,7 +71,7 @@ def shape(image):
     return _shape[0], _shape[1], _shape[2]
 
 
-def process_singe_image(image_path, FLAGS, mode):
+def process_singe_image(image_path, FLAGS):
     image = tf.read_file(image_path)
     image = tf.image.decode_png(image, channels=3)
     image = tf.image.convert_image_dtype(image, dtype=tf.float32)
@@ -110,7 +110,7 @@ def process_singe_image(image_path, FLAGS, mode):
 
 def pre_process(image_paths_tensor, FLAGS, mode='train'):
     with tf.variable_scope('pre-process', reuse=tf.AUTO_REUSE):
-        image_batch = tf.map_fn(lambda image_path: process_singe_image(image_path, FLAGS, mode), image_paths_tensor,
+        image_batch = tf.map_fn(lambda image_path: process_singe_image(image_path, FLAGS), image_paths_tensor,
                                 dtype=tf.float32)
         image_batch = tf.stack(image_batch, axis=0)
         print('[BATCH SHAPE]:', mode, image_batch.get_shape(), image_batch.dtype)

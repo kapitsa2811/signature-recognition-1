@@ -7,7 +7,7 @@ mining or hard negative mining. [[Blog for triplet loss]](https://github.com/omo
 
 The network is trained on open-source [signature dataset](https://cedar.buffalo.edu/NIJ/data/signatures.rar).
 Please note that this code is not explicitly written for signature detection and can be used for any siamese task
-such as Face-Recognition, writer recognition using handwritten text, etc. See Notes Section.
+such as Face-Recognition (Face alignment logic should be implemented), writer recognition using handwritten text, etc. See Notes Section.
 
 <img src="./images/Siamese.png">
 
